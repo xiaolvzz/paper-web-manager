@@ -23,11 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(papers.router)
-app.include_router(analysis.router)
-app.include_router(relations.router)
-app.include_router(arxiv_search.router)
+# 注册路由 - 添加/api前缀
+app.include_router(papers.router, prefix="/api")
+app.include_router(analysis.router, prefix="/api")
+app.include_router(relations.router, prefix="/api")
+app.include_router(arxiv_search.router, prefix="/api")
 
 # 检测是否在Vercel环境中
 IS_VERCEL = os.getenv("VERCEL", False)
