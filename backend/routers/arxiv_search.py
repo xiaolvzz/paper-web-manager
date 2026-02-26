@@ -39,8 +39,12 @@ def fetch_arxiv_metadata(arxiv_id: str) -> dict:
     api_url = f"http://export.arxiv.org/api/query?id_list={arxiv_id}"
 
     try:
+        logger.info(f"[fetch_metadata] Fetching from: {api_url}")
         response = requests.get(api_url, timeout=10)
         response.raise_for_status()
+
+        logger.info(f"[fetch_metadata] Response status: {response.status_code}")
+        logger.debug(f"[fetch_metadata] Response content (first 500 chars): {response.content[:500]}")
 
         # 解析XML
         root = ET.fromstring(response.content)
@@ -53,11 +57,18 @@ def fetch_arxiv_metadata(arxiv_id: str) -> dict:
 
         entry = root.find('atom:entry', ns)
         if entry is None:
-            raise ValueError("论文未找到")
+            logger.error(f"[fetch_metadata] No entry found for arXiv ID: {arxiv_id}")
+            logger.debug(f"[fetch_metadata] XML content: {ET.tostring(root, encoding='unicode')}")
+            raise ValueError(f"论文未找到：arXiv ID {arxiv_id} 不存在或格式错误")
 
         # 提取信息
-        title = entry.find('atom:title', ns).text.strip().replace('\n', ' ')
-        summary = entry.find('atom:summary', ns).text.strip().replace('\n', ' ')
+        title_elem = entry.find('atom:title', ns)
+        if title_elem is None:
+            raise ValueError("论文数据不完整：缺少标题")
+        title = title_elem.text.strip().replace('\n', ' ')
+
+        summary_elem = entry.find('atom:summary', ns)
+        summary = summary_elem.text.strip().replace('\n', ' ') if summary_elem is not None else ""
 
         # 作者
         authors = []
@@ -67,7 +78,10 @@ def fetch_arxiv_metadata(arxiv_id: str) -> dict:
                 authors.append(name.text)
 
         # 发布日期
-        published = entry.find('atom:published', ns).text
+        published_elem = entry.find('atom:published', ns)
+        if published_elem is None:
+            raise ValueError("论文数据不完整：缺少发布日期")
+        published = published_elem.text
         published_date = datetime.fromisoformat(published.replace('Z', '+00:00'))
 
         # 分类
@@ -80,7 +94,7 @@ def fetch_arxiv_metadata(arxiv_id: str) -> dict:
         # PDF链接
         pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
 
-        return {
+        result = {
             "arxiv_id": arxiv_id,
             "title": title,
             "authors": ", ".join(authors),
@@ -92,15 +106,47 @@ def fetch_arxiv_metadata(arxiv_id: str) -> dict:
             "categories": ", ".join(categories)
         }
 
+        logger.info(f"[fetch_metadata] Successfully extracted: {title}")
+        return result
+
     except requests.RequestException as e:
-        logger.error(f"Failed to fetch arXiv metadata: {e}")
+        logger.error(f"[fetch_metadata] Request failed for {arxiv_id}: {e}")
         raise HTTPException(status_code=500, detail=f"无法连接到arXiv API: {str(e)}")
     except ET.ParseError as e:
-        logger.error(f"Failed to parse XML: {e}")
+        logger.error(f"[fetch_metadata] XML parse error for {arxiv_id}: {e}")
         raise HTTPException(status_code=500, detail="解析arXiv响应失败")
+    except ValueError as e:
+        logger.error(f"[fetch_metadata] Value error for {arxiv_id}: {e}")
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Error fetching metadata: {e}")
+        logger.error(f"[fetch_metadata] Unexpected error for {arxiv_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"获取论文信息失败: {str(e)}")
+
+
+@router.get("/debug/{arxiv_id}")
+async def debug_arxiv_id(arxiv_id: str):
+    """调试端点：检查arXiv ID是否有效"""
+    try:
+        logger.info(f"[debug] Testing arXiv ID: {arxiv_id}")
+        paper_data = fetch_arxiv_metadata(arxiv_id)
+        return {
+            "status": "success",
+            "arxiv_id": arxiv_id,
+            "paper": paper_data
+        }
+    except HTTPException as e:
+        return {
+            "status": "error",
+            "arxiv_id": arxiv_id,
+            "error": e.detail,
+            "status_code": e.status_code
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "arxiv_id": arxiv_id,
+            "error": str(e)
+        }
 
 
 @router.get("/health")
@@ -271,18 +317,23 @@ async def add_paper_from_pdf_url(pdf_url: str = Query(..., description="arXiv PD
     - 2301.12345
     """
     try:
-        logger.info(f"Extracting paper from PDF URL: {pdf_url}")
+        logger.info(f"[from-pdf-url] Step 1: Received PDF URL: {pdf_url}")
 
         # 提取arXiv ID
         arxiv_id = parse_arxiv_id_from_url(pdf_url)
+        logger.info(f"[from-pdf-url] Step 2: Extracted arXiv ID: {arxiv_id}")
+
         if not arxiv_id:
+            logger.error(f"[from-pdf-url] Failed to extract arXiv ID from: {pdf_url}")
             raise HTTPException(
                 status_code=400,
-                detail="无法从URL中提取arXiv ID，请检查URL格式"
+                detail=f"无法从URL中提取arXiv ID，请检查URL格式。输入: {pdf_url}"
             )
 
         # 获取元数据
+        logger.info(f"[from-pdf-url] Step 3: Fetching metadata for arXiv ID: {arxiv_id}")
         paper_data = fetch_arxiv_metadata(arxiv_id)
+        logger.info(f"[from-pdf-url] Step 4: Successfully fetched metadata: {paper_data.get('title', 'Unknown')}")
 
         return {
             "success": True,
@@ -293,7 +344,7 @@ async def add_paper_from_pdf_url(pdf_url: str = Query(..., description="arXiv PD
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error extracting paper: {e}", exc_info=True)
+        logger.error(f"[from-pdf-url] Error extracting paper from {pdf_url}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"提取论文信息失败: {str(e)}"

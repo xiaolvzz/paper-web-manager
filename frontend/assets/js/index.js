@@ -30,10 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // 加载论文列表
 async function loadPapers(params = {}) {
     try {
+        console.log('📋 加载论文列表，参数:', params);
         const papers = await PapersAPI.list(params);
+        console.log(`✓ 成功加载 ${papers.length} 篇论文:`, papers);
         currentPapers = papers;
         renderPapers(papers);
     } catch (error) {
+        console.error('❌ 加载论文列表失败:', error);
         showToast('加载论文列表失败: ' + error.message, 'error');
     }
 }
@@ -141,25 +144,40 @@ async function addFromPdfUrl() {
     spinner.classList.remove('d-none');
 
     try {
-        console.log('从PDF URL添加:', pdfUrl);
+        console.log('步骤1: 从PDF URL添加论文:', pdfUrl);
 
         // 调用后端API提取论文信息
+        console.log('步骤2: 调用后端API提取论文信息...');
         const response = await fetch(`/api/arxiv/from-pdf-url?pdf_url=${encodeURIComponent(pdfUrl)}`, {
             method: 'POST'
         });
 
+        console.log('步骤3: 后端响应状态:', response.status);
+
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || '请求失败');
+            const errorText = await response.text();
+            console.error('后端返回错误:', errorText);
+            try {
+                const error = JSON.parse(errorText);
+                throw new Error(error.detail || '请求失败');
+            } catch (e) {
+                throw new Error(`服务器错误 (${response.status}): ${errorText.substring(0, 100)}`);
+            }
         }
 
         const data = await response.json();
-        console.log('提取的论文信息:', data.paper);
+        console.log('步骤4: 提取的论文信息:', data);
+
+        if (!data.paper) {
+            throw new Error('后端返回的数据格式错误：缺少paper字段');
+        }
 
         // 直接添加论文到系统
-        await PapersAPI.create(data.paper);
+        console.log('步骤5: 添加论文到数据库...');
+        const createdPaper = await PapersAPI.create(data.paper);
+        console.log('步骤6: 论文创建成功:', createdPaper);
 
-        showToast('论文添加成功！');
+        showToast('✓ 论文添加成功！');
 
         // 清空输入并关闭modal
         input.value = '';
@@ -167,11 +185,15 @@ async function addFromPdfUrl() {
         modal.hide();
 
         // 重新加载论文列表
+        console.log('步骤7: 重新加载论文列表...');
         await loadPapers();
+        console.log('步骤8: 完成！当前论文数量:', currentPapers.length);
 
     } catch (error) {
-        console.error('添加失败:', error);
+        console.error('❌ 添加失败 - 详细错误:', error);
+        console.error('错误堆栈:', error.stack);
         showToast('添加失败: ' + error.message, 'error');
+        alert('添加失败，详细信息：\n\n' + error.message + '\n\n请按F12打开控制台查看更多信息');
     } finally {
         btnText.classList.remove('d-none');
         spinner.classList.add('d-none');
