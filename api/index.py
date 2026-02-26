@@ -1,39 +1,29 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from http.server import BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+import json
 import sys
 import os
 
 # 添加项目根目录
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-app = FastAPI()
-
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 导入路由
-try:
-    from backend.routers import papers, analysis, relations, arxiv_search
-
-    app.include_router(papers.router, prefix="/api")
-    app.include_router(analysis.router, prefix="/api")
-    app.include_router(relations.router, prefix="/api")
-    app.include_router(arxiv_search.router, prefix="/api")
-
-    status = "loaded"
-except Exception as e:
-    status = f"error: {e}"
-
-@app.get("/api/health")
-def health():
-    return {"status": "ok", "backend": status}
-
-@app.get("/")
-def root():
-    return {"message": "Paper Manager API", "status": status}
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed_path = urlparse(self.path)
+        path = parsed_path.path
+        
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        # 简单测试
+        response = {
+            "status": "ok",
+            "message": "Vercel Python function is working!",
+            "path": path,
+            "method": "GET"
+        }
+        
+        self.wfile.write(json.dumps(response).encode())
+        return
