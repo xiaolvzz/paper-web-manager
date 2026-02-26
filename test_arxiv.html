@@ -22,9 +22,21 @@
 
         <div class="card mt-4">
             <div class="card-body">
-                <h5>搜索论文</h5>
+                <h5>方法1: 从PDF链接添加论文</h5>
+                <p class="text-muted small">推荐方式：直接粘贴arXiv的PDF链接</p>
                 <div class="input-group mb-3">
-                    <input type="text" class="form-control" id="searchQuery" placeholder="输入关键词（例如：DriveWorld-VLA）" value="DriveWorld-VLA">
+                    <input type="text" class="form-control" id="pdfUrl" placeholder="https://arxiv.org/pdf/2301.12345.pdf" value="https://arxiv.org/pdf/1706.03762.pdf">
+                    <button class="btn btn-success" onclick="testPdfUrl()">提取论文信息</button>
+                </div>
+                <div id="pdfResults" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5>方法2: 搜索论文</h5>
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="searchQuery" placeholder="输入关键词（例如：DriveWorld-VLA）" value="attention is all you need">
                     <button class="btn btn-primary" onclick="testSearch()">搜索</button>
                 </div>
 
@@ -41,6 +53,64 @@
     </div>
 
     <script>
+        async function testPdfUrl() {
+            const pdfUrl = document.getElementById('pdfUrl').value.trim();
+            const resultsDiv = document.getElementById('pdfResults');
+
+            if (!pdfUrl) {
+                resultsDiv.innerHTML = '<div class="alert alert-warning">请输入PDF链接</div>';
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> 提取中...';
+
+            try {
+                console.log('PDF链接:', pdfUrl);
+
+                const response = await fetch(`/api/arxiv/from-pdf-url?pdf_url=${encodeURIComponent(pdfUrl)}`, {
+                    method: 'POST'
+                });
+
+                console.log('响应状态:', response.status);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || '请求失败');
+                }
+
+                const data = await response.json();
+                console.log('提取结果:', data);
+
+                const paper = data.paper;
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        <h6>✓ 成功提取论文信息</h6>
+                    </div>
+                    <div class="card">
+                        <div class="card-body">
+                            <h6 class="card-title">${escapeHtml(paper.title)}</h6>
+                            <p class="card-text">
+                                <strong>作者:</strong> ${escapeHtml(paper.authors)}<br>
+                                <strong>发布日期:</strong> ${paper.published} (${paper.year})<br>
+                                <strong>arXiv ID:</strong> ${paper.arxiv_id}<br>
+                                <strong>分类:</strong> ${escapeHtml(paper.categories)}
+                            </p>
+                            <p class="card-text"><small class="text-muted">${escapeHtml(paper.abstract.substring(0, 300))}...</small></p>
+                            <a href="${paper.pdf_url}" target="_blank" class="btn btn-sm btn-primary">查看PDF</a>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('提取错误:', error);
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>提取失败</h6>
+                        <p>${escapeHtml(error.message)}</p>
+                    </div>
+                `;
+            }
+        }
+
         async function checkHealth() {
             const statusDiv = document.getElementById('healthStatus');
             statusDiv.innerHTML = '<div class="spinner-border spinner-border-sm"></div> 检查中...';
@@ -163,6 +233,10 @@
         // 回车搜索
         document.getElementById('searchQuery').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') testSearch();
+        });
+
+        document.getElementById('pdfUrl').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') testPdfUrl();
         });
     </script>
 </body>

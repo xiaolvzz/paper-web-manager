@@ -65,18 +65,47 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <!-- arXiv搜索功能 -->
+                    <!-- arXiv快速添加 -->
                     <div class="mb-4 p-3 bg-light rounded">
-                        <h6 class="mb-3">🔍 从arXiv搜索并添加论文</h6>
-                        <div class="input-group mb-2">
-                            <input type="text" class="form-control" id="arxivSearchInput" placeholder="输入论文标题或关键词...">
-                            <button class="btn btn-outline-primary" type="button" onclick="searchArxiv()">
-                                <span id="arxivSearchBtnText">搜索</span>
-                                <span id="arxivSearchSpinner" class="spinner-border spinner-border-sm d-none"></span>
-                            </button>
+                        <h6 class="mb-3">🔍 从arXiv添加论文</h6>
+
+                        <!-- 方式1: 在arXiv网站搜索 -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">方式1：在arXiv网站搜索</label>
+                            <div class="d-flex gap-2">
+                                <input type="text" class="form-control form-control-sm" id="arxivWebSearchInput" placeholder="输入关键词...">
+                                <button class="btn btn-sm btn-primary" onclick="openArxivSearch()">
+                                    打开arXiv搜索
+                                </button>
+                            </div>
+                            <small class="text-muted">在新窗口搜索论文，找到后复制PDF链接粘贴到下方</small>
                         </div>
-                        <small class="text-muted">点击搜索结果即可直接添加论文到系统</small>
-                        <div id="arxivResults" class="mt-3"></div>
+
+                        <!-- 方式2: 直接粘贴PDF链接 -->
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">方式2：粘贴PDF链接直接添加</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" class="form-control" id="arxivPdfUrl" placeholder="https://arxiv.org/pdf/2301.12345.pdf">
+                                <button class="btn btn-success" type="button" onclick="addFromPdfUrl()">
+                                    <span id="pdfUrlBtnText">添加</span>
+                                    <span id="pdfUrlSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                                </button>
+                            </div>
+                            <small class="text-muted">支持格式: https://arxiv.org/pdf/xxx.pdf 或 https://arxiv.org/abs/xxx</small>
+                        </div>
+
+                        <!-- 方式3: 内置搜索 -->
+                        <div>
+                            <label class="form-label small fw-bold">方式3：内置搜索</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="text" class="form-control" id="arxivSearchInput" placeholder="输入论文标题或关键词...">
+                                <button class="btn btn-outline-primary" type="button" onclick="searchArxiv()">
+                                    <span id="arxivSearchBtnText">搜索</span>
+                                    <span id="arxivSearchSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                                </button>
+                            </div>
+                            <div id="arxivResults"></div>
+                        </div>
                     </div>
 
                     <div class="mb-3">

@@ -110,6 +110,74 @@ function renderTags(tagsStr) {
     `;
 }
 
+// 打开arXiv网站搜索
+function openArxivSearch() {
+    const input = document.getElementById('arxivWebSearchInput');
+    const query = input.value.trim();
+
+    let url = 'https://arxiv.org/search/';
+    if (query) {
+        url = `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all`;
+    }
+
+    window.open(url, '_blank', 'width=1200,height=800');
+    showToast('在新窗口打开arXiv，找到论文后复制PDF链接粘贴到下方');
+}
+
+// 从PDF URL添加论文
+async function addFromPdfUrl() {
+    const input = document.getElementById('arxivPdfUrl');
+    const pdfUrl = input.value.trim();
+
+    if (!pdfUrl) {
+        showToast('请输入PDF链接', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('pdfUrlBtnText');
+    const spinner = document.getElementById('pdfUrlSpinner');
+
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    try {
+        console.log('从PDF URL添加:', pdfUrl);
+
+        // 调用后端API提取论文信息
+        const response = await fetch(`/api/arxiv/from-pdf-url?pdf_url=${encodeURIComponent(pdfUrl)}`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || '请求失败');
+        }
+
+        const data = await response.json();
+        console.log('提取的论文信息:', data.paper);
+
+        // 直接添加论文到系统
+        await PapersAPI.create(data.paper);
+
+        showToast('论文添加成功！');
+
+        // 清空输入并关闭modal
+        input.value = '';
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addPaperModal'));
+        modal.hide();
+
+        // 重新加载论文列表
+        await loadPapers();
+
+    } catch (error) {
+        console.error('添加失败:', error);
+        showToast('添加失败: ' + error.message, 'error');
+    } finally {
+        btnText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+}
+
 // 搜索arXiv论文
 async function searchArxiv() {
     const input = document.getElementById('arxivSearchInput');

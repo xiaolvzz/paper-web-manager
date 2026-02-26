@@ -141,6 +141,13 @@ const ArxivAPI = {
     async getById(arxivId) {
         return request(`/arxiv/paper/${arxivId}`);
     },
+
+    // 从PDF URL添加论文
+    async fromPdfUrl(pdfUrl) {
+        return request(`/arxiv/from-pdf-url?pdf_url=${encodeURIComponent(pdfUrl)}`, {
+            method: 'POST'
+        });
+    },
 };
 
 // 关联关系API
