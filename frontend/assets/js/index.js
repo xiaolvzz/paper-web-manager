@@ -14,6 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
             searchPapers();
         }
     });
+
+    // arXiv搜索框回车事件（在modal打开后绑定）
+    const addPaperModal = document.getElementById('addPaperModal');
+    addPaperModal.addEventListener('shown.bs.modal', () => {
+        const arxivInput = document.getElementById('arxivSearchInput');
+        arxivInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchArxiv();
+            }
+        });
+    });
 });
 
 // 加载论文列表
@@ -97,6 +108,73 @@ function renderTags(tagsStr) {
             ${tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
         </div>
     `;
+}
+
+// 搜索arXiv论文
+async function searchArxiv() {
+    const input = document.getElementById('arxivSearchInput');
+    const query = input.value.trim();
+
+    if (!query) {
+        showToast('请输入搜索关键词', 'error');
+        return;
+    }
+
+    const searchBtn = document.getElementById('arxivSearchBtnText');
+    const searchSpinner = document.getElementById('arxivSearchSpinner');
+    const resultsDiv = document.getElementById('arxivResults');
+
+    searchBtn.classList.add('d-none');
+    searchSpinner.classList.remove('d-none');
+
+    try {
+        const data = await ArxivAPI.search(query, 5);
+
+        if (data.count === 0) {
+            resultsDiv.innerHTML = '<div class="text-muted small">未找到相关论文</div>';
+        } else {
+            resultsDiv.innerHTML = `
+                <div class="small text-muted mb-2">找到 ${data.count} 篇论文</div>
+                ${data.results.map(paper => `
+                    <div class="arxiv-result-item p-2 mb-2 border rounded" style="cursor: pointer;" onclick='fillFormFromArxiv(${JSON.stringify(paper)})'>
+                        <div class="fw-bold small">${escapeHtml(paper.title)}</div>
+                        <div class="text-muted" style="font-size: 0.85rem;">
+                            ${escapeHtml(paper.authors)} · ${paper.year}
+                        </div>
+                    </div>
+                `).join('')}
+                <style>
+                    .arxiv-result-item:hover {
+                        background-color: #f8f9fa;
+                    }
+                </style>
+            `;
+        }
+    } catch (error) {
+        showToast('arXiv搜索失败: ' + error.message, 'error');
+        resultsDiv.innerHTML = '';
+    } finally {
+        searchBtn.classList.remove('d-none');
+        searchSpinner.classList.add('d-none');
+    }
+}
+
+// 从arXiv结果填充表单
+function fillFormFromArxiv(paper) {
+    const form = document.getElementById('addPaperForm');
+
+    form.querySelector('[name="title"]').value = paper.title;
+    form.querySelector('[name="authors"]').value = paper.authors;
+    form.querySelector('[name="year"]').value = paper.year;
+    form.querySelector('[name="pdf_path"]').value = paper.pdf_url;
+    form.querySelector('[name="abstract"]').value = paper.abstract;
+    form.querySelector('[name="tags"]').value = paper.categories;
+
+    // 清空搜索结果
+    document.getElementById('arxivResults').innerHTML = '';
+    document.getElementById('arxivSearchInput').value = '';
+
+    showToast('已自动填充论文信息');
 }
 
 // 添加论文

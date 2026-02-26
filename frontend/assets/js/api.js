@@ -130,6 +130,19 @@ const AnalysisAPI = {
     },
 };
 
+// arXiv API
+const ArxivAPI = {
+    // 搜索论文
+    async search(query, maxResults = 10) {
+        return request(`/arxiv/search?query=${encodeURIComponent(query)}&max_results=${maxResults}`);
+    },
+
+    // 通过ID获取论文
+    async getById(arxivId) {
+        return request(`/arxiv/paper/${arxivId}`);
+    },
+};
+
 // 关联关系API
 const RelationsAPI = {
     // 获取所有关联关系

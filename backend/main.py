@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from backend.routers import papers, analysis, relations
+from backend.routers import papers, analysis, relations, arxiv_search
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(papers.router)
 app.include_router(analysis.router)
 app.include_router(relations.router)
+app.include_router(arxiv_search.router)
 
 # 挂载静态文件
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
