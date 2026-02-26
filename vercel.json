@@ -3,6 +3,33 @@
     {
       "source": "/api/:path*",
       "destination": "/api/index"
+    },
+    {
+      "source": "/",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/paper/:id",
+      "destination": "/frontend/paper.html"
+    },
+    {
+      "source": "/graph",
+      "destination": "/frontend/graph.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/frontend/status.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        }
+      ]
     }
   ]
 }
