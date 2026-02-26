@@ -1,7 +1,17 @@
 """arXiv搜索API"""
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
-import arxiv
+import logging
+
+# 配置日志
+logger = logging.getLogger(__name__)
+
+try:
+    import arxiv
+    ARXIV_AVAILABLE = True
+except ImportError as e:
+    logger.error(f"Failed to import arxiv: {e}")
+    ARXIV_AVAILABLE = False
 
 router = APIRouter(prefix="/api/arxiv", tags=["arxiv"])
 
@@ -19,7 +29,16 @@ async def search_papers(
     - 作者：输入作者名
     - 精确标题：用引号括起来 "exact title"
     """
+    # 检查arxiv库是否可用
+    if not ARXIV_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="arXiv库未安装或导入失败，请联系管理员"
+        )
+
     try:
+        logger.info(f"Searching arXiv for: {query}")
+
         # 智能构建搜索查询
         # 如果用户没有指定搜索字段，默认在标题和摘要中搜索
         if not any(prefix in query for prefix in ['ti:', 'au:', 'abs:', 'cat:', 'all:']):
@@ -27,6 +46,8 @@ async def search_papers(
             search_query = f'ti:{query} OR abs:{query} OR all:{query}'
         else:
             search_query = query
+
+        logger.info(f"Using search query: {search_query}")
 
         # 构建搜索，增加返回数量以提高匹配率
         search = arxiv.Search(
@@ -57,6 +78,8 @@ async def search_papers(
             })
             count += 1
 
+        logger.info(f"Found {len(results)} papers")
+
         return {
             "query": query,
             "search_query": search_query,  # 返回实际使用的查询
@@ -64,7 +87,14 @@ async def search_papers(
             "results": results
         }
 
+    except ImportError as e:
+        logger.error(f"Import error: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"arXiv库导入失败: {str(e)}"
+        )
     except Exception as e:
+        logger.error(f"Search error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"arXiv搜索失败: {str(e)}"
@@ -78,7 +108,16 @@ async def get_paper_by_id(arxiv_id: str):
 
     示例ID: 2301.12345 或 1706.03762
     """
+    # 检查arxiv库是否可用
+    if not ARXIV_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="arXiv库未安装或导入失败，请联系管理员"
+        )
+
     try:
+        logger.info(f"Getting paper by ID: {arxiv_id}")
+
         # 构建完整的arXiv URL
         if not arxiv_id.startswith('http'):
             arxiv_id = f"http://arxiv.org/abs/{arxiv_id}"
@@ -100,8 +139,10 @@ async def get_paper_by_id(arxiv_id: str):
         }
 
     except StopIteration:
+        logger.warning(f"Paper not found: {arxiv_id}")
         raise HTTPException(status_code=404, detail="论文未找到")
     except Exception as e:
+        logger.error(f"Error getting paper: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"获取论文失败: {str(e)}"
