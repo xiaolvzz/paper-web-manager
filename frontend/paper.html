@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>论文详情 - 论文管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/css/main.css" rel="stylesheet">
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="/">📚 论文管理系统</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">论文列表</a>
+                <a class="nav-link" href="/graph">关系图</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <!-- 论文基本信息 -->
+        <div class="detail-section">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <h2 id="paperTitle">加载中...</h2>
+                <button class="btn btn-primary" onclick="toggleEditMode()">
+                    <span id="editBtnText">编辑</span>
+                </button>
+            </div>
+            <div id="paperInfo"></div>
+        </div>
+
+        <!-- 分析记录 -->
+        <div class="detail-section">
+            <h4>📊 分析记录</h4>
+
+            <!-- 创新点分析 -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">创新点分析</label>
+                <textarea class="form-control" id="innovationPoints" rows="6" placeholder="输入创新点分析..."></textarea>
+            </div>
+
+            <!-- 框架图 -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">框架图</label>
+                <div id="frameworkImageContainer"></div>
+                <input type="file" class="form-control mt-2" id="frameworkImageInput" accept="image/*">
+                <button class="btn btn-sm btn-primary mt-2" onclick="uploadFrameworkImage()">
+                    <span id="uploadBtnText">上传图片</span>
+                    <span id="uploadSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                </button>
+            </div>
+
+            <!-- 个人备注 -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">个人备注</label>
+                <textarea class="form-control" id="personalNotes" rows="6" placeholder="输入个人备注..."></textarea>
+            </div>
+
+            <button class="btn btn-success" onclick="saveAnalysis()">
+                <span id="saveBtnText">保存分析</span>
+                <span id="saveSpinner" class="spinner-border spinner-border-sm d-none"></span>
+            </button>
+        </div>
+
+        <!-- 关联关系 -->
+        <div class="detail-section">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0">🔗 关联论文</h4>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addRelationModal">
+                    + 添加关联
+                </button>
+            </div>
+            <div id="relationsList"></div>
+        </div>
+    </div>
+
+    <!-- 添加关联关系Modal -->
+    <div class="modal fade" id="addRelationModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">添加关联关系</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addRelationForm">
+                        <div class="mb-3">
+                            <label class="form-label">关联论文 *</label>
+                            <select class="form-select" id="relatedPaperSelect" required>
+                                <option value="">选择论文...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">关系类型 *</label>
+                            <select class="form-select" id="relationTypeSelect" required>
+                                <option value="method_similar">方法相似</option>
+                                <option value="problem_related">问题相关</option>
+                                <option value="custom">自定义</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">关系描述</label>
+                            <textarea class="form-control" id="relationDescription" rows="3" placeholder="可选：描述两篇论文的关系..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" onclick="addRelation()">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/paper.js"></script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+paper_web_manager/
+│
+├── 📦 配置文件
+│   ├── requirements.txt          # Python依赖包
+│   ├── vercel.json              # Vercel部署配置
+│   ├── .env.example             # 环境变量模板
+│   └── .gitignore               # Git忽略规则
+│
+├── 📚 文档
+│   ├── README.md                # 项目说明
+│   ├── QUICKSTART.md            # 快速开始指南
+│   ├── DEPLOYMENT_GUIDE.md      # 详细部署教程
+│   └── PROJECT_SUMMARY.md       # 项目总结
+│
+├── 🗄️ 数据库
+│   └── database_schema.sql      # PostgreSQL建表脚本
+│
+├── 🔧 后端 (FastAPI)
+│   └── backend/
+│       ├── __init__.py
+│       ├── main.py              # 应用入口
+│       ├── database.py          # Supabase连接
+│       ├── models.py            # Pydantic数据模型
+│       └── routers/
+│           ├── __init__.py
+│           ├── papers.py        # 论文CRUD API
+│           ├── analysis.py      # 分析记录API
+│           └── relations.py     # 关联关系API
+│
+└── 🎨 前端 (Bootstrap 5)
+    └── frontend/
+        ├── index.html           # 论文列表页
+        ├── paper.html           # 论文详情页
+        ├── graph.html           # 关系图页面
+        └── assets/
+            ├── css/
+            │   └── main.css     # 全局样式
+            └── js/
+                ├── api.js       # API请求封装
+                ├── index.js     # 列表页逻辑
+                ├── paper.js     # 详情页逻辑
+                └── graph.js     # 图谱可视化
+
+📊 统计
+├── 文件总数: 21个
+├── 代码行数: 1,933行
+├── 后端代码: 6个文件
+├── 前端代码: 8个文件
+└── 文档: 4个文件
+
+🚀 部署方式
+├── 本地: uvicorn backend.main:app --reload
+├── 云端: Vercel (自动部署)
+└── 数据库: Supabase (PostgreSQL)
+
+💰 成本: ¥0/月 (完全免费)
