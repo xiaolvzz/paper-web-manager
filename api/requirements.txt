@@ -4,4 +4,4 @@ supabase
 pydantic
 python-multipart
 requests
-mangum
+httpx
