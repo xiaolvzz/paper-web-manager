@@ -67,7 +67,7 @@
                 <div class="modal-body">
                     <!-- arXiv搜索功能 -->
                     <div class="mb-4 p-3 bg-light rounded">
-                        <h6 class="mb-3">🔍 从arXiv搜索论文</h6>
+                        <h6 class="mb-3">🔍 从arXiv搜索并添加论文</h6>
                         <div class="input-group mb-2">
                             <input type="text" class="form-control" id="arxivSearchInput" placeholder="输入论文标题或关键词...">
                             <button class="btn btn-outline-primary" type="button" onclick="searchArxiv()">
@@ -75,7 +75,13 @@
                                 <span id="arxivSearchSpinner" class="spinner-border spinner-border-sm d-none"></span>
                             </button>
                         </div>
+                        <small class="text-muted">点击搜索结果即可直接添加论文到系统</small>
                         <div id="arxivResults" class="mt-3"></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <hr>
+                        <p class="text-center text-muted small mb-3">或手动输入论文信息</p>
                     </div>
 
                     <form id="addPaperForm">

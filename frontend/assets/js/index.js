@@ -134,18 +134,29 @@ async function searchArxiv() {
             resultsDiv.innerHTML = '<div class="text-muted small">未找到相关论文</div>';
         } else {
             resultsDiv.innerHTML = `
-                <div class="small text-muted mb-2">找到 ${data.count} 篇论文</div>
-                ${data.results.map(paper => `
-                    <div class="arxiv-result-item p-2 mb-2 border rounded" style="cursor: pointer;" onclick='fillFormFromArxiv(${JSON.stringify(paper)})'>
-                        <div class="fw-bold small">${escapeHtml(paper.title)}</div>
-                        <div class="text-muted" style="font-size: 0.85rem;">
-                            ${escapeHtml(paper.authors)} · ${paper.year}
+                <div class="small text-muted mb-2">找到 ${data.count} 篇论文，点击直接添加到系统</div>
+                ${data.results.map((paper, index) => `
+                    <div class="arxiv-result-item p-2 mb-2 border rounded d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick='addPaperFromArxiv(${JSON.stringify(paper).replace(/'/g, "&#39;")})'>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">${escapeHtml(paper.title)}</div>
+                            <div class="text-muted" style="font-size: 0.85rem;">
+                                ${escapeHtml(paper.authors)} · ${paper.year}
+                            </div>
+                        </div>
+                        <div class="ms-2">
+                            <button class="btn btn-sm btn-outline-primary" onclick='event.stopPropagation(); window.open("${paper.pdf_url}", "_blank")'>
+                                查看PDF
+                            </button>
                         </div>
                     </div>
                 `).join('')}
                 <style>
+                    .arxiv-result-item {
+                        transition: all 0.2s;
+                    }
                     .arxiv-result-item:hover {
                         background-color: #f8f9fa;
+                        border-color: #0d6efd !important;
                     }
                 </style>
             `;
@@ -159,22 +170,44 @@ async function searchArxiv() {
     }
 }
 
-// 从arXiv结果填充表单
-function fillFormFromArxiv(paper) {
-    const form = document.getElementById('addPaperForm');
+// 从arXiv直接添加论文
+async function addPaperFromArxiv(paper) {
+    // 确认是否添加
+    if (!confirm(`确定要添加论文《${paper.title}》吗？`)) {
+        return;
+    }
 
-    form.querySelector('[name="title"]').value = paper.title;
-    form.querySelector('[name="authors"]').value = paper.authors;
-    form.querySelector('[name="year"]').value = paper.year;
-    form.querySelector('[name="pdf_path"]').value = paper.pdf_url;
-    form.querySelector('[name="abstract"]').value = paper.abstract;
-    form.querySelector('[name="tags"]').value = paper.categories;
+    try {
+        // 准备数据
+        const data = {
+            title: paper.title,
+            authors: paper.authors,
+            year: paper.year,
+            pdf_path: paper.pdf_url,
+            abstract: paper.abstract,
+            tags: paper.categories
+        };
 
-    // 清空搜索结果
-    document.getElementById('arxivResults').innerHTML = '';
-    document.getElementById('arxivSearchInput').value = '';
+        // 调用API添加论文
+        await PapersAPI.create(data);
+        showToast('论文添加成功！');
 
-    showToast('已自动填充论文信息');
+        // 关闭modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addPaperModal'));
+        modal.hide();
+
+        // 清空搜索
+        document.getElementById('arxivResults').innerHTML = '';
+        document.getElementById('arxivSearchInput').value = '';
+
+        // 清空表单
+        document.getElementById('addPaperForm').reset();
+
+        // 重新加载论文列表
+        await loadPapers();
+    } catch (error) {
+        showToast('添加论文失败: ' + error.message, 'error');
+    }
 }
 
 // 添加论文
