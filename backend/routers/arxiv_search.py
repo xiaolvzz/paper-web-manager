@@ -10,7 +10,7 @@ from datetime import datetime
 # 配置日志
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/arxiv", tags=["arxiv"])
+router = APIRouter(prefix="/arxiv", tags=["arxiv"])
 
 
 def parse_arxiv_id_from_url(url: str) -> Optional[str]:

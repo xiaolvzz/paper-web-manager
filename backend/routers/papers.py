@@ -5,7 +5,7 @@ from supabase import Client
 from backend.database import get_db
 from backend.models import Paper, PaperCreate, PaperUpdate
 
-router = APIRouter(prefix="/api/papers", tags=["papers"])
+router = APIRouter(prefix="/papers", tags=["papers"])
 
 
 @router.get("/", response_model=List[Paper])

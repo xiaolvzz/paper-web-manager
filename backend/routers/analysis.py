@@ -7,7 +7,7 @@ from backend.models import Analysis, AnalysisCreate, AnalysisUpdate
 import os
 import uuid
 
-router = APIRouter(prefix="/api/analysis", tags=["analysis"])
+router = APIRouter(prefix="/analysis", tags=["analysis"])
 
 
 @router.get("/paper/{paper_id}", response_model=Analysis)

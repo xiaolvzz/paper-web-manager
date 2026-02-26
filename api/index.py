@@ -21,10 +21,10 @@ app.add_middleware(
 try:
     from backend.routers import papers, analysis, relations, arxiv_search
 
-    app.include_router(papers.router)
-    app.include_router(analysis.router)
-    app.include_router(relations.router)
-    app.include_router(arxiv_search.router)
+    app.include_router(papers.router, prefix="/api")
+    app.include_router(analysis.router, prefix="/api")
+    app.include_router(relations.router, prefix="/api")
+    app.include_router(arxiv_search.router, prefix="/api")
 
     status = "loaded"
 except Exception as e:
@@ -33,3 +33,7 @@ except Exception as e:
 @app.get("/api/health")
 def health():
     return {"status": "ok", "backend": status}
+
+@app.get("/")
+def root():
+    return {"message": "Paper Manager API", "status": status}

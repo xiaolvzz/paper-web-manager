@@ -5,7 +5,7 @@ from supabase import Client
 from backend.database import get_db
 from backend.models import Relation, RelationCreate
 
-router = APIRouter(prefix="/api/relations", tags=["relations"])
+router = APIRouter(prefix="/relations", tags=["relations"])
 
 
 @router.get("/", response_model=List[Relation])
