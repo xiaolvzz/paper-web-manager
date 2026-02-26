@@ -45,6 +45,17 @@ class handler(BaseHTTPRequestHandler):
             parsed_path = urlparse(self.path)
             path = parsed_path.path
 
+            # 移除/api前缀，因为FastAPI内部路由不包含/api
+            # 例如：/api/health → /health, /api/papers → /papers
+            if path.startswith('/api/'):
+                path = path[4:]  # 去掉'/api'
+            elif path.startswith('/api'):
+                path = path[4:]  # 去掉'/api'
+
+            # 保留查询参数
+            if parsed_path.query:
+                path = f"{path}?{parsed_path.query}"
+
             # 读取请求体（如果有）
             content_length = self.headers.get('Content-Length')
             body = None
