@@ -2,10 +2,14 @@
 import os
 from typing import Optional, Dict, Any
 from supabase import create_client, Client
-from dotenv import load_dotenv
 
-# 加载环境变量
-load_dotenv()
+# 加载环境变量（仅在本地开发环境）
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # Vercel环境中不需要dotenv
+    pass
 
 
 class Database:
