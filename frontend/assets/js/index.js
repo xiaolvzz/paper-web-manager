@@ -127,14 +127,27 @@ async function searchArxiv() {
     searchBtn.classList.add('d-none');
     searchSpinner.classList.remove('d-none');
 
+    // 显示正在搜索的提示
+    resultsDiv.innerHTML = '<div class="text-muted small">正在搜索 arXiv...</div>';
+
     try {
-        const data = await ArxivAPI.search(query, 5);
+        console.log('搜索关键词:', query);
+        const data = await ArxivAPI.search(query, 10);  // 增加到10个结果
+        console.log('搜索结果:', data);
 
         if (data.count === 0) {
-            resultsDiv.innerHTML = '<div class="text-muted small">未找到相关论文</div>';
+            resultsDiv.innerHTML = `
+                <div class="alert alert-warning small mb-0">
+                    <strong>未找到相关论文</strong><br>
+                    尝试使用不同的关键词，或检查拼写是否正确。<br>
+                    搜索词: "${escapeHtml(query)}"
+                </div>
+            `;
         } else {
             resultsDiv.innerHTML = `
-                <div class="small text-muted mb-2">找到 ${data.count} 篇论文，点击直接添加到系统</div>
+                <div class="small text-success mb-2">
+                    ✓ 找到 ${data.count} 篇论文，点击直接添加到系统
+                </div>
                 ${data.results.map((paper, index) => `
                     <div class="arxiv-result-item p-2 mb-2 border rounded d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick='addPaperFromArxiv(${JSON.stringify(paper).replace(/'/g, "&#39;")})'>
                         <div class="flex-grow-1">
@@ -162,8 +175,15 @@ async function searchArxiv() {
             `;
         }
     } catch (error) {
+        console.error('arXiv搜索错误:', error);
         showToast('arXiv搜索失败: ' + error.message, 'error');
-        resultsDiv.innerHTML = '';
+        resultsDiv.innerHTML = `
+            <div class="alert alert-danger small mb-0">
+                <strong>搜索失败</strong><br>
+                ${escapeHtml(error.message)}<br>
+                请稍后重试或联系管理员。
+            </div>
+        `;
     } finally {
         searchBtn.classList.remove('d-none');
         searchSpinner.classList.add('d-none');
