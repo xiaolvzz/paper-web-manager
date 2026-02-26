@@ -16,6 +16,16 @@ except ImportError as e:
 router = APIRouter(prefix="/api/arxiv", tags=["arxiv"])
 
 
+@router.get("/health")
+async def health_check():
+    """检查arXiv服务状态"""
+    return {
+        "status": "ok" if ARXIV_AVAILABLE else "error",
+        "arxiv_available": ARXIV_AVAILABLE,
+        "message": "arXiv库已加载" if ARXIV_AVAILABLE else "arXiv库未安装或导入失败"
+    }
+
+
 @router.get("/search")
 async def search_papers(
     query: str = Query(..., description="搜索关键词（标题、作者等）"),
