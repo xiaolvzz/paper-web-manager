@@ -17,12 +17,20 @@
       "destination": "/frontend/graph.html"
     },
     {
+      "source": "/debug",
+      "destination": "/frontend/debug.html"
+    },
+    {
       "source": "/status",
       "destination": "/frontend/status.html"
     },
     {
       "source": "/test-add",
       "destination": "/frontend/test_add_paper.html"
+    },
+    {
+      "source": "/assets/(.*)",
+      "destination": "/frontend/assets/$1"
     }
   ],
   "headers": [
