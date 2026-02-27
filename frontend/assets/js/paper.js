@@ -1313,3 +1313,157 @@ PDF文本长度: ${data.fields.pdf_text_content_length} 字符
 
 // 全局暴露调试函数（可在控制台调用）
 window.debugPaper = debugPaper;
+
+// ========== AI代码架构分析功能 ==========
+
+let codeAnalysisCache = null;
+
+/**
+ * 分析代码架构
+ */
+async function analyzeCodeArchitecture() {
+    const sourceCodeUrl = document.getElementById('sourceCodeUrl').value.trim();
+
+    if (!sourceCodeUrl) {
+        showToast('请先输入源码链接', 'error');
+        return;
+    }
+
+    // 检查是否为GitHub链接
+    if (!sourceCodeUrl.includes('github.com')) {
+        showToast('目前仅支持GitHub代码仓库分析', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('analyzeCodeBtnText');
+    const spinner = document.getElementById('analyzeCodeSpinner');
+    const resultDiv = document.getElementById('codeAnalysisResult');
+    const contentDiv = document.getElementById('codeAnalysisContent');
+    const copyBtn = document.getElementById('copyCodeAnalysisBtn');
+
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+
+    try {
+        const response = await fetch('/api/code-analysis/analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                repo_url: sourceCodeUrl,
+                paper_id: currentPaper?.id
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+        codeAnalysisCache = data.analysis;
+
+        // 格式化并显示分析结果
+        contentDiv.innerHTML = formatCodeAnalysis(data.analysis);
+        resultDiv.style.display = 'block';
+        copyBtn.style.display = 'inline-block';
+
+        showToast('✓ 代码架构分析完成', 'success');
+
+    } catch (error) {
+        console.error('代码分析失败:', error);
+        contentDiv.innerHTML = `
+            <div class="text-center text-danger p-4">
+                <p>❌ 分析失败</p>
+                <p class="small">${error.message}</p>
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+    } finally {
+        btnText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+}
+
+/**
+ * 格式化代码分析结果为HTML
+ */
+function formatCodeAnalysis(text) {
+    const lines = text.split('\n');
+    let html = '';
+    let inCodeBlock = false;
+    let codeContent = '';
+
+    lines.forEach(line => {
+        const trimmed = line.trim();
+
+        // 检测代码块
+        if (trimmed.startsWith('```')) {
+            if (inCodeBlock) {
+                // 结束代码块
+                html += `<pre class="bg-dark text-light p-3 rounded"><code>${escapeHtml(codeContent)}</code></pre>`;
+                codeContent = '';
+                inCodeBlock = false;
+            } else {
+                // 开始代码块
+                inCodeBlock = true;
+            }
+            return;
+        }
+
+        if (inCodeBlock) {
+            codeContent += line + '\n';
+            return;
+        }
+
+        if (!trimmed) {
+            html += '<br>';
+            return;
+        }
+
+        // Level标题（## Level 1:...）
+        if (trimmed.startsWith('## Level')) {
+            html += `<h4 class="mt-4 mb-3 text-primary border-bottom pb-2">${escapeHtml(trimmed.replace('##', ''))}</h4>`;
+        }
+        // 其他二级标题
+        else if (trimmed.startsWith('##')) {
+            html += `<h5 class="mt-3 mb-2 text-secondary">${escapeHtml(trimmed.replace('##', ''))}</h5>`;
+        }
+        // 三级标题
+        else if (trimmed.startsWith('###')) {
+            html += `<h6 class="mt-2 mb-1 fw-bold">${escapeHtml(trimmed.replace('###', ''))}</h6>`;
+        }
+        // 列表项
+        else if (trimmed.startsWith('*   ') || trimmed.startsWith('- ')) {
+            const content = trimmed.replace(/^[\*\-]\s+/, '');
+            html += `<li class="mb-1">${escapeHtml(content)}</li>`;
+        }
+        // 加粗文本（**text**）
+        else if (trimmed.includes('**')) {
+            const formatted = trimmed.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            html += `<p class="mb-2">${formatted}</p>`;
+        }
+        // 普通段落
+        else {
+            html += `<p class="mb-2">${escapeHtml(trimmed)}</p>`;
+        }
+    });
+
+    return `<div style="line-height: 1.8; font-size: 14px;">${html}</div>`;
+}
+
+/**
+ * 复制代码分析结果
+ */
+function copyCodeAnalysis() {
+    if (!codeAnalysisCache) {
+        showToast('没有可复制的内容', 'error');
+        return;
+    }
+
+    navigator.clipboard.writeText(codeAnalysisCache).then(() => {
+        showToast('✓ 已复制到剪贴板', 'success');
+    }).catch(err => {
+        console.error('复制失败:', err);
+        showToast('复制失败', 'error');
+    });
+}
