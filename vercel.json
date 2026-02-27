@@ -33,6 +33,10 @@
       "destination": "/frontend/test_add_paper.html"
     },
     {
+      "source": "/test-api",
+      "destination": "/frontend/test_api.html"
+    },
+    {
       "source": "/assets/(.*)",
       "destination": "/frontend/assets/$1"
     }

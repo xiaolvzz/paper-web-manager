@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API诊断工具</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>🔍 API诊断工具</h1>
+        <p class="text-muted">诊断论文管理系统API问题</p>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>测试 GET /api/papers/</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary" onclick="testPapersAPI()">测试API</button>
+                <div id="papersResult" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>测试 GET /api/health</h5>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary" onclick="testHealthAPI()">测试健康检查</button>
+                <div id="healthResult" class="mt-3"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>原始响应</h5>
+            </div>
+            <div class="card-body">
+                <pre id="rawResponse" style="max-height: 400px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function testPapersAPI() {
+            const resultDiv = document.getElementById('papersResult');
+            const rawDiv = document.getElementById('rawResponse');
+            resultDiv.innerHTML = '<div class="spinner-border text-primary"></div> 测试中...';
+
+            try {
+                const response = await fetch('/api/papers/');
+                const text = await response.text();
+
+                rawDiv.textContent = `状态码: ${response.status}\n内容类型: ${response.headers.get('content-type')}\n\n${text}`;
+
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(text);
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-success">
+                                ✅ 成功！返回 ${data.length} 篇论文
+                            </div>
+                        `;
+                    } catch (e) {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-danger">
+                                ❌ 响应不是有效的JSON
+                                <br>错误: ${e.message}
+                            </div>
+                        `;
+                    }
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            ❌ HTTP ${response.status}
+                            <br>${text.substring(0, 200)}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ 请求失败: ${error.message}
+                    </div>
+                `;
+                rawDiv.textContent = error.stack;
+            }
+        }
+
+        async function testHealthAPI() {
+            const resultDiv = document.getElementById('healthResult');
+            const rawDiv = document.getElementById('rawResponse');
+            resultDiv.innerHTML = '<div class="spinner-border text-primary"></div> 测试中...';
+
+            try {
+                const response = await fetch('/api/health');
+                const text = await response.text();
+
+                rawDiv.textContent = `状态码: ${response.status}\n内容类型: ${response.headers.get('content-type')}\n\n${text}`;
+
+                if (response.ok) {
+                    try {
+                        const data = JSON.parse(text);
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-success">
+                                ✅ 健康检查通过
+                                <pre>${JSON.stringify(data, null, 2)}</pre>
+                            </div>
+                        `;
+                    } catch (e) {
+                        resultDiv.innerHTML = `
+                            <div class="alert alert-warning">
+                                ⚠️ 响应不是JSON: ${text}
+                            </div>
+                        `;
+                    }
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="alert alert-danger">
+                            ❌ HTTP ${response.status}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="alert alert-danger">
+                        ❌ 请求失败: ${error.message}
+                    </div>
+                `;
+                rawDiv.textContent = error.stack;
+            }
+        }
+
+        // 页面加载时自动测试
+        window.addEventListener('load', () => {
+            setTimeout(testHealthAPI, 500);
+        });
+    </script>
+</body>
+</html>
