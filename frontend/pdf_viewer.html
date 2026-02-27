@@ -108,11 +108,13 @@
             position: relative;
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
             background: white;
+            display: inline-block;
         }
 
         #pdf-canvas {
             display: block;
-            /* 不要用CSS缩放canvas，必须用实际尺寸 */
+            margin: 0;
+            padding: 0;
         }
 
         /* PDF文本层（可选择） - 必须精确对齐canvas */
@@ -120,13 +122,12 @@
             position: absolute;
             left: 0;
             top: 0;
-            right: 0;
-            bottom: 0;
             overflow: hidden;
             opacity: 1;
             line-height: 1.0;
             user-select: text;
             -webkit-user-select: text;
+            pointer-events: auto;
         }
 
         .textLayer span,
@@ -420,15 +421,30 @@
                 const canvas = document.getElementById('pdf-canvas');
                 const ctx = canvas.getContext('2d');
                 const textLayerDiv = document.getElementById('text-layer');
+                const container = document.getElementById('pdf-page-container');
 
-                // 计算缩放比例和viewport
+                // 获取设备像素比（处理高DPI屏幕）
+                const outputScale = window.devicePixelRatio || 1;
+
+                // 计算viewport（CSS尺寸）
                 const viewport = page.getViewport({ scale: currentScale });
 
-                // 设置canvas尺寸为viewport的实际尺寸（不使用CSS缩放）
-                canvas.height = viewport.height;
-                canvas.width = viewport.width;
+                // 设置容器的CSS尺寸
+                container.style.width = Math.floor(viewport.width) + 'px';
+                container.style.height = Math.floor(viewport.height) + 'px';
 
-                // 渲染canvas
+                // 设置canvas的CSS显示尺寸
+                canvas.style.width = Math.floor(viewport.width) + 'px';
+                canvas.style.height = Math.floor(viewport.height) + 'px';
+
+                // 设置canvas的实际分辨率（考虑设备像素比）
+                canvas.width = Math.floor(viewport.width * outputScale);
+                canvas.height = Math.floor(viewport.height * outputScale);
+
+                // 缩放画布context以匹配设备像素比
+                ctx.scale(outputScale, outputScale);
+
+                // 渲染PDF到canvas
                 const renderContext = {
                     canvasContext: ctx,
                     viewport: viewport
@@ -441,14 +457,11 @@
                 // 清空旧的文本层
                 textLayerDiv.innerHTML = '';
 
-                // 关键：text layer必须和canvas的像素尺寸完全一致
-                textLayerDiv.style.width = viewport.width + 'px';
-                textLayerDiv.style.height = viewport.height + 'px';
-                textLayerDiv.style.position = 'absolute';
-                textLayerDiv.style.left = '0';
-                textLayerDiv.style.top = '0';
+                // 设置text layer的CSS尺寸（和canvas的CSS尺寸一致）
+                textLayerDiv.style.width = Math.floor(viewport.width) + 'px';
+                textLayerDiv.style.height = Math.floor(viewport.height) + 'px';
 
-                // 使用PDF.js renderTextLayer - 必须使用相同的viewport
+                // 使用PDF.js renderTextLayer
                 try {
                     const textLayerRender = pdfjsLib.renderTextLayer({
                         textContentSource: textContent,
@@ -457,9 +470,14 @@
                         enhanceTextSelection: true
                     });
                     await textLayerRender.promise;
-                    console.log('Text layer rendered successfully, size:', viewport.width, 'x', viewport.height);
+                    console.log('✅ Text layer rendered:', {
+                        cssSize: `${Math.floor(viewport.width)}x${Math.floor(viewport.height)}`,
+                        canvasSize: `${canvas.width}x${canvas.height}`,
+                        scale: currentScale,
+                        dpr: outputScale
+                    });
                 } catch (error) {
-                    console.error('Text layer rendering error:', error);
+                    console.error('❌ Text layer rendering error:', error);
                 }
 
                 currentPage = num;
