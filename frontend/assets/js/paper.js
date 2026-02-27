@@ -60,6 +60,14 @@ function renderPaperInfo() {
     document.getElementById('paperTitle').textContent = currentPaper.title;
     document.title = `${currentPaper.title} - 论文管理系统`;
 
+    // 显示/隐藏查看PDF按钮
+    const viewPdfBtn = document.getElementById('viewPdfBtn');
+    if (currentPaper.pdf_path) {
+        viewPdfBtn.style.display = 'inline-block';
+    } else {
+        viewPdfBtn.style.display = 'none';
+    }
+
     const infoHtml = `
         <div class="row">
             <div class="col-md-6 mb-2">
@@ -840,6 +848,26 @@ function handleChatKeydown(event) {
         event.preventDefault();
         sendMessage();
     }
+}
+
+// ========== PDF查看功能 ==========
+
+/**
+ * 打开PDF查看器
+ */
+function viewPDF() {
+    if (!currentPaper || !currentPaper.pdf_path) {
+        showToast('该论文没有PDF文件', 'error');
+        return;
+    }
+
+    // 构建PDF查看器URL
+    const pdfUrl = encodeURIComponent(currentPaper.pdf_path);
+    const title = encodeURIComponent(currentPaper.title);
+    const viewerUrl = `/pdf-viewer?url=${pdfUrl}&title=${title}&paper_id=${currentPaper.id}`;
+
+    // 在新窗口打开
+    window.open(viewerUrl, '_blank', 'width=1200,height=800');
 }
 
 // HTML转义函数已在文件开头定义，无需重复

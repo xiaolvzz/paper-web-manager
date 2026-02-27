@@ -21,6 +21,10 @@
       "destination": "/frontend/debug.html"
     },
     {
+      "source": "/pdf-viewer",
+      "destination": "/frontend/pdf_viewer.html"
+    },
+    {
       "source": "/status",
       "destination": "/frontend/status.html"
     },
