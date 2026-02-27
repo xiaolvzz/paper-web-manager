@@ -15,7 +15,7 @@ import re
 router = APIRouter(prefix="/papers", tags=["papers"])
 
 
-@router.get("/", response_model=List[Paper])
+@router.get("/")
 async def get_papers(
     search: Optional[str] = Query(None, description="搜索关键词（标题、作者）"),
     year: Optional[int] = Query(None, description="年份筛选"),
@@ -43,13 +43,25 @@ async def get_papers(
         # 分页和排序
         response = query.order("created_at", desc=True).range(offset, offset + limit - 1).execute()
 
-        return response.data
+        # 直接返回数据，不进行Pydantic验证（兼容数据库字段变化）
+        papers = response.data
+
+        # 为每个论文补充默认值（如果字段不存在）
+        for paper in papers:
+            paper.setdefault('source_code_url', None)
+            paper.setdefault('main_work', None)
+            paper.setdefault('innovations', None)
+            paper.setdefault('structured_tags', None)
+            paper.setdefault('auto_analyzed', False)
+            paper.setdefault('auto_analysis_date', None)
+
+        return papers
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取论文列表失败: {str(e)}")
 
 
-@router.get("/{paper_id}", response_model=Paper)
+@router.get("/{paper_id}")
 async def get_paper(paper_id: int, db: Client = Depends(get_db)):
     """获取单篇论文详情"""
     try:
@@ -58,7 +70,17 @@ async def get_paper(paper_id: int, db: Client = Depends(get_db)):
         if not response.data:
             raise HTTPException(status_code=404, detail="论文不存在")
 
-        return response.data[0]
+        paper = response.data[0]
+
+        # 补充默认值
+        paper.setdefault('source_code_url', None)
+        paper.setdefault('main_work', None)
+        paper.setdefault('innovations', None)
+        paper.setdefault('structured_tags', None)
+        paper.setdefault('auto_analyzed', False)
+        paper.setdefault('auto_analysis_date', None)
+
+        return paper
 
     except HTTPException:
         raise
@@ -66,11 +88,19 @@ async def get_paper(paper_id: int, db: Client = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"获取论文失败: {str(e)}")
 
 
-@router.post("/", response_model=Paper, status_code=201)
+@router.post("/", status_code=201)
 async def create_paper(paper: PaperCreate, db: Client = Depends(get_db)):
     """创建新论文"""
     try:
-        response = db.table("papers").insert(paper.model_dump()).execute()
+        # 过滤掉None值和新字段（如果数据库中不存在）
+        paper_data = {k: v for k, v in paper.model_dump().items() if v is not None}
+
+        # 移除可能不存在的新字段
+        new_fields = ['source_code_url', 'main_work', 'innovations', 'structured_tags', 'auto_analyzed', 'auto_analysis_date']
+        for field in new_fields:
+            paper_data.pop(field, None)
+
+        response = db.table("papers").insert(paper_data).execute()
 
         if not response.data:
             raise HTTPException(status_code=400, detail="创建论文失败")
@@ -81,7 +111,7 @@ async def create_paper(paper: PaperCreate, db: Client = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"创建论文失败: {str(e)}")
 
 
-@router.put("/{paper_id}", response_model=Paper)
+@router.put("/{paper_id}")
 async def update_paper(
     paper_id: int,
     paper: PaperUpdate,
@@ -95,12 +125,30 @@ async def update_paper(
         if not update_data:
             raise HTTPException(status_code=400, detail="没有需要更新的字段")
 
-        response = db.table("papers").update(update_data).eq("id", paper_id).execute()
+        # 尝试更新，如果字段不存在会自动忽略
+        try:
+            response = db.table("papers").update(update_data).eq("id", paper_id).execute()
+        except Exception as db_error:
+            # 如果失败，尝试只更新基本字段
+            basic_fields = ['title', 'authors', 'year', 'pdf_path', 'abstract', 'tags',
+                          'github_url', 'domain', 'pdf_storage_path', 'pdf_text_content', 'arxiv_id']
+            update_data = {k: v for k, v in update_data.items() if k in basic_fields}
+            response = db.table("papers").update(update_data).eq("id", paper_id).execute()
 
         if not response.data:
             raise HTTPException(status_code=404, detail="论文不存在")
 
-        return response.data[0]
+        paper_result = response.data[0]
+
+        # 补充默认值
+        paper_result.setdefault('source_code_url', None)
+        paper_result.setdefault('main_work', None)
+        paper_result.setdefault('innovations', None)
+        paper_result.setdefault('structured_tags', None)
+        paper_result.setdefault('auto_analyzed', False)
+        paper_result.setdefault('auto_analysis_date', None)
+
+        return paper_result
 
     except HTTPException:
         raise
@@ -136,6 +184,14 @@ async def get_paper_with_analysis(paper_id: int, db: Client = Depends(get_db)):
             raise HTTPException(status_code=404, detail="论文不存在")
 
         paper = paper_response.data[0]
+
+        # 补充默认值
+        paper.setdefault('source_code_url', None)
+        paper.setdefault('main_work', None)
+        paper.setdefault('innovations', None)
+        paper.setdefault('structured_tags', None)
+        paper.setdefault('auto_analyzed', False)
+        paper.setdefault('auto_analysis_date', None)
 
         # 获取分析记录
         analysis_response = db.table("analysis").select("*").eq("paper_id", paper_id).execute()
