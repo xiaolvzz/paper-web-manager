@@ -4,9 +4,13 @@ from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
 from supabase import Client
 from backend.database import get_db
-from backend.models import Paper, PaperCreate, PaperUpdate
+from backend.models import Paper, PaperCreate, PaperUpdate, AutoAnalysisResult, AutoAnalysisResponse
 from backend.utils.pdf_processor import process_uploaded_pdf, upload_pdf_to_supabase
 from backend.utils.arxiv_helper import fetch_arxiv_paper
+from backend.utils.ai_manager import ai_manager
+from datetime import datetime
+import json
+import re
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -302,3 +306,146 @@ async def add_text_content(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"保存文本内容失败: {str(e)}")
+
+
+# ========== AI自动分析端点 ==========
+
+@router.post("/{paper_id}/auto-analyze", response_model=AutoAnalysisResponse)
+async def auto_analyze_paper(
+    paper_id: int,
+    update_db: bool = Query(True, description="是否更新到数据库"),
+    db: Client = Depends(get_db)
+):
+    """
+    AI自动分析论文
+
+    功能：
+    1. 读取论文标题、摘要、全文
+    2. 使用AI提取：主要工作、创新点、标签、源码链接
+    3. 返回结构化结果
+    4. 可选：直接更新到数据库
+
+    返回格式：
+    {
+        "main_work": "这篇论文提出了...",
+        "innovations": ["创新点1", "创新点2"],
+        "structured_tags": ["Transformer", "NLP", "Attention"],
+        "source_code_url": "https://github.com/...",
+        "has_code": true
+    }
+    """
+    try:
+        # 1. 获取论文信息
+        paper_response = db.table("papers").select("*").eq("id", paper_id).execute()
+        if not paper_response.data:
+            raise HTTPException(status_code=404, detail="论文不存在")
+
+        paper = paper_response.data[0]
+
+        # 2. 构建分析内容
+        content_parts = []
+        content_parts.append(f"标题: {paper['title']}")
+
+        if paper.get('authors'):
+            content_parts.append(f"作者: {paper['authors']}")
+
+        if paper.get('year'):
+            content_parts.append(f"年份: {paper['year']}")
+
+        if paper.get('abstract'):
+            content_parts.append(f"\n摘要:\n{paper['abstract']}")
+
+        # 如果有全文，添加前5000字
+        if paper.get('pdf_text_content'):
+            text_content = paper['pdf_text_content'][:5000]
+            content_parts.append(f"\n论文内容（前5000字）:\n{text_content}")
+
+        paper_content = "\n\n".join(content_parts)
+
+        # 3. 构建AI提示词
+        system_prompt = """你是一位专业的学术论文分析助手。你的任务是分析论文并提取关键信息。
+
+请以JSON格式输出，包含以下字段：
+{
+  "main_work": "用1-2句话概括论文的主要工作",
+  "innovations": ["创新点1", "创新点2", "创新点3"],  // 列出2-5个主要创新点
+  "structured_tags": ["标签1", "标签2", "标签3"],  // 3-8个关键技术标签
+  "source_code_url": "源码链接或null",  // 如果论文中提到代码链接则提取，否则为null
+  "has_code": true/false  // 是否有源码
+}
+
+注意事项：
+1. main_work要简洁清晰，突出核心贡献
+2. innovations每项用简短一句话描述，突出"新"和"不同"
+3. structured_tags使用标准技术术语（如Transformer、CNN、BERT等）
+4. 仔细在论文中寻找GitHub、代码仓库等关键词来提取source_code_url
+5. 只输出JSON，不要其他文字"""
+
+        user_prompt = f"请分析以下论文：\n\n{paper_content}"
+
+        # 4. 调用AI
+        try:
+            ai_response = await ai_manager.chat(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                temperature=0.3,  # 较低温度，更稳定的输出
+                max_tokens=2000
+            )
+
+            # 5. 解析AI返回的JSON
+            # 提取JSON（可能被markdown代码块包裹）
+            json_match = re.search(r'```json\s*(\{.*?\})\s*```', ai_response, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(1)
+            else:
+                # 直接尝试解析
+                json_str = ai_response.strip()
+
+            analysis_data = json.loads(json_str)
+
+            # 6. 验证和标准化数据
+            analysis_result = AutoAnalysisResult(
+                main_work=analysis_data.get("main_work", ""),
+                innovations=analysis_data.get("innovations", []),
+                structured_tags=analysis_data.get("structured_tags", []),
+                source_code_url=analysis_data.get("source_code_url") if analysis_data.get("source_code_url") not in [None, "null", ""] else None,
+                has_code=analysis_data.get("has_code", False)
+            )
+
+            # 7. 更新数据库（如果需要）
+            updated = False
+            if update_db:
+                update_data = {
+                    "main_work": analysis_result.main_work,
+                    "innovations": json.dumps(analysis_result.innovations, ensure_ascii=False),
+                    "structured_tags": json.dumps(analysis_result.structured_tags, ensure_ascii=False),
+                    "auto_analyzed": True,
+                    "auto_analysis_date": datetime.now().isoformat()
+                }
+
+                if analysis_result.source_code_url:
+                    update_data["source_code_url"] = analysis_result.source_code_url
+
+                db.table("papers").update(update_data).eq("id", paper_id).execute()
+                updated = True
+
+            return AutoAnalysisResponse(
+                success=True,
+                analysis=analysis_result,
+                message="分析完成",
+                updated=updated
+            )
+
+        except json.JSONDecodeError as e:
+            # JSON解析失败，返回原始响应供调试
+            raise HTTPException(
+                status_code=500,
+                detail=f"AI返回格式错误，无法解析JSON: {str(e)}\n原始响应: {ai_response[:200]}"
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"自动分析失败: {str(e)}")

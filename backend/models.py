@@ -11,12 +11,19 @@ class PaperBase(BaseModel):
     year: Optional[int] = Field(None, description="发表年份")
     pdf_path: Optional[str] = Field(None, description="PDF路径（本地或云盘链接）")
     abstract: Optional[str] = Field(None, description="摘要")
-    tags: Optional[str] = Field(None, description="标签，逗号分隔")
-    github_url: Optional[str] = Field(None, description="GitHub代码仓库链接")
+    tags: Optional[str] = Field(None, description="标签，逗号分隔（兼容旧数据）")
+    github_url: Optional[str] = Field(None, description="GitHub代码仓库链接（兼容字段）")
     domain: Optional[str] = Field(None, description="研究领域（如NLP、CV、RL等）")
     pdf_storage_path: Optional[str] = Field(None, description="Supabase Storage中的PDF文件路径")
     pdf_text_content: Optional[str] = Field(None, description="提取的PDF文本内容")
     arxiv_id: Optional[str] = Field(None, description="arXiv论文ID（如2301.12345）")
+    # 新增字段
+    source_code_url: Optional[str] = Field(None, description="源码链接")
+    main_work: Optional[str] = Field(None, description="主要工作描述")
+    innovations: Optional[List[str]] = Field(None, description="创新点列表")
+    structured_tags: Optional[List[str]] = Field(None, description="结构化标签列表")
+    auto_analyzed: Optional[bool] = Field(None, description="是否已自动分析")
+    auto_analysis_date: Optional[datetime] = Field(None, description="自动分析时间")
 
 
 class PaperCreate(PaperBase):
@@ -37,6 +44,13 @@ class PaperUpdate(BaseModel):
     pdf_storage_path: Optional[str] = None
     pdf_text_content: Optional[str] = None
     arxiv_id: Optional[str] = None
+    # 新增字段
+    source_code_url: Optional[str] = None
+    main_work: Optional[str] = None
+    innovations: Optional[List[str]] = None
+    structured_tags: Optional[List[str]] = None
+    auto_analyzed: Optional[bool] = None
+    auto_analysis_date: Optional[datetime] = None
 
 
 class Paper(PaperBase):
@@ -152,3 +166,22 @@ class ChatResponse(BaseModel):
     content: str = Field(..., description="AI回复内容")
     conversation_id: int = Field(..., description="对话记录ID")
     created_at: datetime = Field(..., description="创建时间")
+
+
+# ========== 自动分析相关模型 ==========
+
+class AutoAnalysisResult(BaseModel):
+    """AI自动分析结果模型"""
+    main_work: str = Field(..., description="主要工作描述")
+    innovations: List[str] = Field(..., description="创新点列表")
+    structured_tags: List[str] = Field(..., description="结构化标签")
+    source_code_url: Optional[str] = Field(None, description="源码链接")
+    has_code: bool = Field(False, description="是否有源码")
+
+
+class AutoAnalysisResponse(BaseModel):
+    """自动分析响应模型"""
+    success: bool = Field(..., description="是否成功")
+    analysis: Optional[AutoAnalysisResult] = Field(None, description="分析结果")
+    message: str = Field(..., description="消息")
+    updated: bool = Field(False, description="是否已更新到数据库")
