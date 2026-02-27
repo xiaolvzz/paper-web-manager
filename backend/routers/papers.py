@@ -7,7 +7,7 @@ from backend.database import get_db
 from backend.models import Paper, PaperCreate, PaperUpdate, AutoAnalysisResult, AutoAnalysisResponse
 from backend.utils.pdf_processor import process_uploaded_pdf, upload_pdf_to_supabase
 from backend.utils.arxiv_helper import fetch_arxiv_paper
-from backend.utils.ai_manager import ai_manager
+from backend.utils.ai_providers import ai_manager
 from datetime import datetime
 import json
 import re
