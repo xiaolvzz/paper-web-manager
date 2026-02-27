@@ -446,3 +446,403 @@ function copyAIOutput() {
     document.getElementById('innovationPoints').scrollIntoView({ behavior: 'smooth', block: 'center' });
     showToast('已复制到创新点分析区域');
 }
+
+// ========== 新增功能：论文内容处理 ==========
+
+let currentPaperId = null;
+
+// 更新页面加载时保存paper ID
+document.addEventListener('DOMContentLoaded', async () => {
+    currentPaperId = getPaperId();
+    if (currentPaperId) {
+        // 加载对话历史
+        await loadConversations();
+        // 检查AI配置状态
+        checkAIStatus();
+        // 检查论文内容状态
+        checkContentStatus();
+    }
+});
+
+/**
+ * 从arXiv导入论文
+ */
+async function importFromArxiv() {
+    const arxivInput = document.getElementById('arxivInput').value.trim();
+    if (!arxivInput) {
+        showToast('请输入arXiv ID或URL', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('arxivBtnText');
+    const spinner = document.getElementById('arxivSpinner');
+    const statusDiv = document.getElementById('arxivStatus');
+
+    btnText.textContent = '导入中...';
+    spinner.classList.remove('d-none');
+    statusDiv.innerHTML = '';
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaperId}/import-from-arxiv`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ arxiv_input: arxivInput })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            statusDiv.innerHTML = '<div class="alert alert-success mt-2">✓ arXiv论文导入成功！页面将刷新...</div>';
+            showToast('arXiv论文导入成功');
+            
+            // 刷新页面数据
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            const error = await response.json();
+            statusDiv.innerHTML = `<div class="alert alert-danger mt-2">导入失败: ${error.detail}</div>`;
+            showToast('导入失败', 'error');
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="alert alert-danger mt-2">导入失败: ${error.message}</div>`;
+        showToast('导入失败: ' + error.message, 'error');
+    } finally {
+        btnText.textContent = '导入';
+        spinner.classList.add('d-none');
+    }
+}
+
+/**
+ * 添加文本内容
+ */
+async function addTextContent() {
+    const textContent = document.getElementById('textContent').value.trim();
+    if (!textContent) {
+        showToast('请输入论文内容', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('textBtnText');
+    const spinner = document.getElementById('textSpinner');
+    const statusDiv = document.getElementById('textStatus');
+
+    btnText.textContent = '保存中...';
+    spinner.classList.remove('d-none');
+    statusDiv.innerHTML = '';
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaperId}/add-text-content`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text_content: textContent })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            statusDiv.innerHTML = `<div class="alert alert-success mt-2">✓ 论文内容已保存 (${data.text_length} 字符)</div>`;
+            updateContentStatus('文本内容已添加');
+            showToast('论文内容已保存');
+        } else {
+            const error = await response.json();
+            statusDiv.innerHTML = `<div class="alert alert-danger mt-2">保存失败: ${error.detail}</div>`;
+            showToast('保存失败', 'error');
+        }
+    } catch (error) {
+        statusDiv.innerHTML = `<div class="alert alert-danger mt-2">保存失败: ${error.message}</div>`;
+        showToast('保存失败: ' + error.message, 'error');
+    } finally {
+        btnText.textContent = '保存';
+        spinner.classList.add('d-none');
+    }
+}
+
+/**
+ * 检查论文内容状态
+ */
+async function checkContentStatus() {
+    if (!currentPaper) return;
+    
+    const statusText = document.getElementById('contentStatusText');
+    if (currentPaper.pdf_text_content) {
+        const length = currentPaper.pdf_text_content.length;
+        statusText.textContent = `✓ 已有论文内容 (${length} 字符)`;
+        statusText.className = 'text-success';
+    } else {
+        statusText.textContent = '暂无论文内容 - 请添加内容以使用AI对话功能';
+        statusText.className = 'text-warning';
+    }
+}
+
+/**
+ * 更新内容状态显示
+ */
+function updateContentStatus(status) {
+    const statusText = document.getElementById('contentStatusText');
+    statusText.textContent = '✓ ' + status;
+    statusText.className = 'text-success';
+}
+
+// ========== AI对话功能 ==========
+
+/**
+ * 检查AI配置状态
+ */
+async function checkAIStatus() {
+    try {
+        const response = await fetch('/api/ai/health');
+        if (response.ok) {
+            const data = await response.json();
+            const statusEl = document.getElementById('aiConfigStatus');
+            if (data.configured) {
+                statusEl.innerHTML = '✓ AI服务已配置 (Groq)';
+                statusEl.className = 'text-success';
+            } else {
+                statusEl.innerHTML = '⚠️ AI服务未配置 - 需要在Vercel中配置GROQ_API_KEY';
+                statusEl.className = 'text-warning';
+            }
+        }
+    } catch (error) {
+        console.error('检查AI状态失败:', error);
+    }
+}
+
+/**
+ * 加载对话历史
+ */
+async function loadConversations() {
+    try {
+        const response = await fetch(`/api/conversations/paper/${currentPaperId}`);
+        if (!response.ok) return;
+
+        const conversations = await response.json();
+        renderConversations(conversations);
+    } catch (error) {
+        console.error('加载对话失败:', error);
+    }
+}
+
+/**
+ * 渲染对话历史
+ */
+function renderConversations(conversations) {
+    const chatHistory = document.getElementById('chatHistory');
+
+    if (conversations.length === 0) {
+        chatHistory.innerHTML = '<p class="text-muted text-center my-4">暂无对话记录，开始提问吧！</p>';
+        return;
+    }
+
+    chatHistory.innerHTML = conversations.map(conv => {
+        if (conv.role === 'system') return ''; // 不显示system消息
+
+        const time = new Date(conv.created_at).toLocaleString('zh-CN', {
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        return `
+            <div class="chat-message ${conv.role}">
+                <div class="message-bubble">${escapeHtml(conv.content)}</div>
+                <small class="message-time">${time}</small>
+            </div>
+        `;
+    }).join('');
+
+    // 滚动到底部
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/**
+ * 添加消息到界面（用于即时反馈）
+ */
+function appendMessage(role, content) {
+    const chatHistory = document.getElementById('chatHistory');
+    
+    // 如果是第一条消息，清空提示文字
+    if (chatHistory.querySelector('.text-muted.text-center')) {
+        chatHistory.innerHTML = '';
+    }
+    
+    const time = new Date().toLocaleString('zh-CN', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    const messageHTML = `
+        <div class="chat-message ${role}">
+            <div class="message-bubble">${escapeHtml(content)}</div>
+            <small class="message-time">${time}</small>
+        </div>
+    `;
+
+    chatHistory.insertAdjacentHTML('beforeend', messageHTML);
+    chatHistory.scrollTop = chatHistory.scrollHeight;
+}
+
+/**
+ * 发送消息
+ */
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // 添加用户消息到界面
+    appendMessage('user', message);
+    input.value = '';
+
+    // 禁用发送按钮
+    const sendBtn = document.getElementById('sendBtn');
+    sendBtn.disabled = true;
+    sendBtn.textContent = 'AI思考中...';
+
+    try {
+        const response = await fetch('/api/conversations/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                paper_id: currentPaperId,
+                user_message: message
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'AI回复失败');
+        }
+
+        const data = await response.json();
+        appendMessage('assistant', data.content);
+
+    } catch (error) {
+        if (error.message.includes('AI服务未配置')) {
+            appendMessage('assistant', '⚠️ AI服务未配置。请在Vercel中配置GROQ_API_KEY环境变量。\n\n或者先使用arXiv导入和文本输入功能添加论文内容。');
+        } else if (error.message.includes('暂无论文内容')) {
+            appendMessage('assistant', '⚠️ 请先添加论文内容（通过arXiv导入或文本输入），然后再提问。');
+        } else {
+            appendMessage('assistant', '抱歉，AI回复失败: ' + error.message);
+        }
+    } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = '发送';
+    }
+}
+
+/**
+ * 快捷提问
+ */
+function askQuickQuestion(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
+}
+
+/**
+ * 一键分析论文
+ */
+async function autoAnalyzePaper() {
+    if (!confirm('将使用AI自动分析论文并填充分析区域，是否继续？')) {
+        return;
+    }
+
+    const originalText = '💬 AI对话助手';
+    const headerEl = document.querySelector('#chatSection h4');
+    headerEl.textContent = '🤖 AI正在分析论文...';
+
+    try {
+        const response = await fetch('/api/ai/analyze-paper', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paper_id: currentPaperId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || '分析失败');
+        }
+
+        const analysis = await response.json();
+
+        // 自动填充分析区域
+        const innovationField = document.getElementById('innovationPoints');
+        if (innovationField && analysis.innovations) {
+            innovationField.value = analysis.innovations.map((item, i) => `${i + 1}. ${item}`).join('\n');
+        }
+
+        const notesField = document.getElementById('personalNotes');
+        if (notesField) {
+            let notes = notesField.value || '';
+
+            // 添加框架信息
+            if (analysis.framework) {
+                notes += `\n\n【框架结构】\n${analysis.framework}`;
+            }
+
+            // 添加方法信息
+            if (analysis.methods && analysis.methods.length > 0) {
+                notes += `\n\n【使用方法】\n${analysis.methods.map((m, i) => `${i + 1}. ${m}`).join('\n')}`;
+            }
+
+            // 添加源码信息
+            if (analysis.source_code) {
+                notes += `\n\n【源码】\n${analysis.source_code}`;
+            }
+
+            notesField.value = notes.trim();
+        }
+
+        showToast('自动分析完成！请查看分析区域');
+        
+        // 滚动到分析区域
+        document.getElementById('innovationPoints').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    } catch (error) {
+        if (error.message.includes('AI服务未配置')) {
+            showToast('AI服务未配置，请先配置GROQ_API_KEY', 'error');
+        } else {
+            showToast('自动分析失败: ' + error.message, 'error');
+        }
+    } finally {
+        headerEl.textContent = originalText;
+    }
+}
+
+/**
+ * 清空对话
+ */
+async function clearConversations() {
+    if (!confirm('确定要清空当前论文的所有对话记录吗？此操作不可恢复。')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/conversations/paper/${currentPaperId}/all`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            document.getElementById('chatHistory').innerHTML = '<p class="text-muted text-center my-4">对话已清空</p>';
+            showToast('对话已清空');
+        } else {
+            showToast('清空失败', 'error');
+        }
+    } catch (error) {
+        showToast('清空失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 处理Enter键发送
+ */
+function handleChatKeydown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+// HTML转义函数已在文件开头定义，无需重复
