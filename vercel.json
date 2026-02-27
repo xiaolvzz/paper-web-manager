@@ -19,6 +19,10 @@
     {
       "source": "/status",
       "destination": "/frontend/status.html"
+    },
+    {
+      "source": "/test-add",
+      "destination": "/frontend/test_add_paper.html"
     }
   ],
   "headers": [
