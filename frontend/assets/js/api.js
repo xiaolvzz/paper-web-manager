@@ -190,8 +190,57 @@ const RelationsAPI = {
     },
 
     // 获取关系图数据
-    async getGraph() {
-        return request('/relations/graph');
+    async getGraph(domainFilter = null, relationTypeFilter = null) {
+        let url = '/relations/graph';
+        const params = new URLSearchParams();
+        if (domainFilter) params.append('domain_filter', domainFilter);
+        if (relationTypeFilter) params.append('relation_type_filter', relationTypeFilter);
+        if (params.toString()) url += '?' + params.toString();
+        return request(url);
+    },
+};
+
+// 领域API
+const DomainsAPI = {
+    // 获取所有领域
+    async list() {
+        return request('/domains/');
+    },
+
+    // 创建领域
+    async create(data) {
+        return request('/domains/', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // 删除领域
+    async delete(id) {
+        return request(`/domains/${id}`, {
+            method: 'DELETE',
+        });
+    },
+
+    // 为论文分配领域
+    async assign(paperId, domainIds) {
+        return request('/domains/assign', {
+            method: 'POST',
+            body: JSON.stringify({
+                paper_id: paperId,
+                domain_ids: domainIds
+            }),
+        });
+    },
+
+    // 获取论文的领域
+    async getPaperDomains(paperId) {
+        return request(`/domains/paper/${paperId}`);
+    },
+
+    // 获取领域下的论文
+    async getDomainPapers(domainId) {
+        return request(`/domains/${domainId}/papers`);
     },
 };
 

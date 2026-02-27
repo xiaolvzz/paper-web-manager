@@ -3,6 +3,11 @@
  */
 
 let network = null;
+let currentData = null;
+let currentFilters = {
+    domain: null,
+    relationType: null
+};
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -10,13 +15,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // 加载关系图数据
-async function loadGraph() {
+async function loadGraph(domainFilter = null, relationTypeFilter = null) {
     const loading = document.getElementById('loading');
     const emptyState = document.getElementById('empty-state');
     const container = document.getElementById('graph-container');
 
     try {
-        const data = await RelationsAPI.getGraph();
+        const data = await RelationsAPI.getGraph(domainFilter, relationTypeFilter);
+        currentData = data;
 
         loading.classList.add('d-none');
 
@@ -29,11 +35,117 @@ async function loadGraph() {
         emptyState.classList.add('d-none');
         container.style.display = 'block';
 
+        // 更新筛选器选项
+        populateFilters(data);
+
+        // 更新统计信息
+        updateStats(data);
+
         renderGraph(data);
     } catch (error) {
         loading.classList.add('d-none');
         showToast('加载关系图失败: ' + error.message, 'error');
     }
+}
+
+// 填充筛选器选项
+function populateFilters(data) {
+    const domainFilter = document.getElementById('domainFilter');
+    const modalDomainFilter = document.getElementById('modalDomainFilter');
+
+    // 清空现有选项（保留"全部"）
+    domainFilter.innerHTML = '<option value="">全部领域</option>';
+    modalDomainFilter.innerHTML = '<option value="">全部领域</option>';
+
+    // 添加领域选项
+    if (data.available_domains) {
+        data.available_domains.forEach(domain => {
+            const option1 = document.createElement('option');
+            option1.value = domain.name;
+            option1.textContent = `${domain.icon || ''} ${domain.name}`;
+            domainFilter.appendChild(option1);
+
+            const option2 = document.createElement('option');
+            option2.value = domain.name;
+            option2.textContent = `${domain.icon || ''} ${domain.name}`;
+            modalDomainFilter.appendChild(option2);
+        });
+    }
+
+    // 设置当前筛选值
+    if (currentFilters.domain) {
+        domainFilter.value = currentFilters.domain;
+        modalDomainFilter.value = currentFilters.domain;
+    }
+    if (currentFilters.relationType) {
+        document.getElementById('modalRelationFilter').value = currentFilters.relationType;
+    }
+
+    // 更新关系类型图例
+    updateRelationLegend(data.relation_types || {});
+}
+
+// 更新关系类型图例
+function updateRelationLegend(relationTypes) {
+    const legendDiv = document.getElementById('relationLegend');
+    const typeLabels = {
+        'derived_from': '衍生',
+        'extends': '扩展',
+        'method_similar': '方法相似',
+        'problem_related': '问题相关',
+        'compares_with': '对比',
+        'same_domain': '同领域',
+        'baseline': '基线',
+        'custom': '自定义'
+    };
+
+    const html = Object.keys(relationTypes).map(type => {
+        const color = getEdgeColor(type);
+        const label = typeLabels[type] || type;
+        const count = relationTypes[type];
+        return `<span class="badge" style="background-color: ${color};">${label} (${count})</span>`;
+    }).join('');
+
+    legendDiv.innerHTML = html || '<span class="text-muted small">暂无关系</span>';
+}
+
+// 更新统计信息
+function updateStats(data) {
+    document.getElementById('statsNodes').textContent = `论文: ${data.nodes.length}`;
+    document.getElementById('statsEdges').textContent = `关系: ${data.edges.length}`;
+
+    const uniqueDomains = new Set();
+    data.nodes.forEach(node => {
+        if (node.domains) {
+            node.domains.forEach(d => uniqueDomains.add(d.name));
+        }
+    });
+    document.getElementById('statsDomains').textContent = `领域: ${uniqueDomains.size}`;
+}
+
+// 应用筛选
+function applyFilters() {
+    const domain = document.getElementById('domainFilter').value;
+    currentFilters.domain = domain || null;
+    loadGraph(currentFilters.domain, currentFilters.relationType);
+}
+
+// 应用模态框筛选
+function applyModalFilters() {
+    const domain = document.getElementById('modalDomainFilter').value;
+    const relationType = document.getElementById('modalRelationFilter').value;
+    currentFilters.domain = domain || null;
+    currentFilters.relationType = relationType || null;
+    loadGraph(currentFilters.domain, currentFilters.relationType);
+}
+
+// 清除筛选
+function clearFilters() {
+    currentFilters = { domain: null, relationType: null };
+    document.getElementById('domainFilter').value = '';
+    document.getElementById('modalDomainFilter').value = '';
+    document.getElementById('modalRelationFilter').value = '';
+    loadGraph();
 }
 
 // 渲染关系图
@@ -42,32 +154,41 @@ function renderGraph(data) {
 
     // 准备节点数据
     const nodes = new vis.DataSet(
-        data.nodes.map(node => ({
-            id: node.id,
-            label: node.label,
-            title: `${node.title}\n${node.year || '未知年份'}${node.tags ? '\n标签: ' + node.tags : ''}`,
-            shape: 'box',
-            color: {
-                background: '#ffffff',
-                border: '#2563eb',
-                highlight: {
-                    background: '#dbeafe',
-                    border: '#1d4ed8'
+        data.nodes.map(node => {
+            // 使用领域颜色或默认颜色
+            const borderColor = node.color || '#6366f1';
+            const bgColor = '#ffffff';
+
+            // 构建悬停提示
+            const title = node.title;
+
+            return {
+                id: node.id,
+                label: node.label,
+                title: title,
+                shape: 'box',
+                color: {
+                    background: bgColor,
+                    border: borderColor,
+                    highlight: {
+                        background: lightenColor(borderColor, 0.9),
+                        border: borderColor
+                    },
+                    hover: {
+                        background: lightenColor(borderColor, 0.95),
+                        border: borderColor
+                    }
                 },
-                hover: {
-                    background: '#eff6ff',
-                    border: '#2563eb'
-                }
-            },
-            font: {
-                size: 14,
-                face: 'Arial',
-                color: '#1e293b'
-            },
-            margin: 10,
-            borderWidth: 2,
-            borderWidthSelected: 3
-        }))
+                font: {
+                    size: 13,
+                    face: 'Arial',
+                    color: '#1e293b'
+                },
+                margin: 10,
+                borderWidth: 3,
+                borderWidthSelected: 4
+            };
+        })
     );
 
     // 准备边数据
@@ -174,9 +295,14 @@ function renderGraph(data) {
 // 获取边的颜色
 function getEdgeColor(relationType) {
     const colors = {
-        'method_similar': '#2563eb',
-        'problem_related': '#10b981',
-        'custom': '#f59e0b'
+        'derived_from': '#8b5cf6',      // 紫色 - 衍生
+        'extends': '#3b82f6',            // 蓝色 - 扩展
+        'method_similar': '#2563eb',     // 深蓝 - 方法相似
+        'problem_related': '#10b981',    // 绿色 - 问题相关
+        'compares_with': '#f59e0b',      // 橙色 - 对比
+        'same_domain': '#06b6d4',        // 青色 - 同领域
+        'baseline': '#ef4444',           // 红色 - 基线
+        'custom': '#64748b'              // 灰色 - 自定义
     };
     return colors[relationType] || '#64748b';
 }
@@ -184,11 +310,35 @@ function getEdgeColor(relationType) {
 // 获取关系类型标签
 function getRelationTypeLabel(type) {
     const labels = {
+        'derived_from': '衍生',
+        'extends': '扩展',
         'method_similar': '方法相似',
         'problem_related': '问题相关',
+        'compares_with': '对比',
+        'same_domain': '同领域',
+        'baseline': '基线',
         'custom': '自定义'
     };
     return labels[type] || type;
+}
+
+// 颜色辅助函数：将hex颜色变亮
+function lightenColor(hex, factor) {
+    // 移除#号
+    hex = hex.replace('#', '');
+
+    // 转换为RGB
+    let r = parseInt(hex.substring(0, 2), 16);
+    let g = parseInt(hex.substring(2, 4), 16);
+    let b = parseInt(hex.substring(4, 6), 16);
+
+    // 向白色（255）靠拢
+    r = Math.round(r + (255 - r) * factor);
+    g = Math.round(g + (255 - g) * factor);
+    b = Math.round(b + (255 - b) * factor);
+
+    // 转回hex
+    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // 适应屏幕
