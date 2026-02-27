@@ -157,9 +157,9 @@
             color: transparent;
         }
 
-        /* 右侧翻译面板 */
-        #translation-panel {
-            width: 400px;
+        /* 右侧多功能面板 */
+        #side-panel {
+            width: 450px;
             background: white;
             border-left: 1px solid #ddd;
             display: flex;
@@ -167,24 +167,44 @@
             box-shadow: -2px 0 8px rgba(0,0,0,0.1);
         }
 
-        #translation-panel.collapsed {
+        #side-panel.collapsed {
             width: 0;
             overflow: hidden;
         }
 
         #panel-header {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 10px 15px;
             border-bottom: 1px solid #ddd;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        #panel-header h4 {
-            margin: 0;
-            font-size: 16px;
+        #panel-tabs {
+            display: flex;
+            gap: 5px;
+        }
+
+        .panel-tab {
+            background: none;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #666;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+
+        .panel-tab:hover {
+            background: #e9ecef;
             color: #333;
+        }
+
+        .panel-tab.active {
+            background: #007bff;
+            color: white;
         }
 
         #close-panel-btn {
@@ -205,10 +225,15 @@
             color: #333;
         }
 
-        #translation-content {
+        .panel-content {
             flex: 1;
             overflow-y: auto;
             padding: 20px;
+            display: none;
+        }
+
+        .panel-content.active {
+            display: block;
         }
 
         .translation-item {
@@ -259,6 +284,164 @@
         .empty-state-icon {
             font-size: 48px;
             margin-bottom: 16px;
+        }
+
+        /* AI速读样式 */
+        #speedread-content {
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        #speedread-content h3 {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        #speedread-content h3:first-child {
+            margin-top: 0;
+        }
+
+        #speedread-content p {
+            margin-bottom: 12px;
+            color: #555;
+        }
+
+        #speedread-content strong {
+            color: #333;
+        }
+
+        .speedread-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+
+        .speedread-actions {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .speedread-actions button {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .speedread-actions button:hover {
+            background: #f8f9fa;
+            border-color: #007bff;
+            color: #007bff;
+        }
+
+        .speedread-actions button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* AI对话样式 */
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        #chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            max-height: calc(100vh - 300px);
+        }
+
+        .chat-message {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-message.user {
+            align-items: flex-end;
+        }
+
+        .chat-message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .chat-message.user .message-bubble {
+            background: #007bff;
+            color: white;
+        }
+
+        .chat-message.assistant .message-bubble {
+            background: white;
+            border: 1px solid #dee2e6;
+            color: #333;
+        }
+
+        .message-time {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        #chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        #chat-input {
+            flex: 1;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            padding: 10px;
+            resize: none;
+            font-size: 14px;
+        }
+
+        #chat-send-btn {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #chat-send-btn:hover {
+            background: #0056b3;
+        }
+
+        #chat-send-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* 工具类 */
+        .d-none {
+            display: none !important;
         }
 
         /* 翻译按钮状态 */
@@ -355,24 +538,64 @@
             </div>
         </div>
 
-        <!-- 右侧翻译面板 -->
-        <div id="translation-panel">
+        <!-- 右侧多功能面板 -->
+        <div id="side-panel">
             <div id="panel-header">
-                <h4>📝 翻译结果</h4>
-                <button id="close-panel-btn" onclick="closeTranslationPanel()" title="关闭面板">×</button>
+                <div id="panel-tabs">
+                    <button class="panel-tab active" onclick="switchTab('translation')">🌐 翻译</button>
+                    <button class="panel-tab" onclick="switchTab('speedread')">📖 AI速读</button>
+                    <button class="panel-tab" onclick="switchTab('chat')">💬 AI对话</button>
+                </div>
+                <button id="close-panel-btn" onclick="closeSidePanel()" title="关闭面板">×</button>
             </div>
-            <div id="translation-content">
+
+            <!-- 翻译内容 -->
+            <div id="translation-content" class="panel-content active">
                 <div class="empty-state">
                     <div class="empty-state-icon">🌐</div>
                     <p>选中PDF中的文字</p>
                     <p>即可查看翻译结果</p>
                 </div>
             </div>
+
+            <!-- AI速读内容 -->
+            <div id="speedread-content" class="panel-content">
+                <div class="speedread-actions">
+                    <button onclick="generateSpeedRead()">
+                        <span id="speedread-btn-text">📖 生成速读</span>
+                        <span id="speedread-spinner" class="d-none">⏳ 生成中...</span>
+                    </button>
+                    <button onclick="copySpeedRead()">📋 复制</button>
+                </div>
+                <div id="speedread-result">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📚</div>
+                        <p>点击"生成速读"按钮</p>
+                        <p>AI将为您生成论文速读</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI对话内容 -->
+            <div id="chat-content" class="panel-content">
+                <div id="chat-container">
+                    <div id="chat-history">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">💬</div>
+                            <p>开始与AI讨论这篇论文</p>
+                        </div>
+                    </div>
+                    <div id="chat-input-area">
+                        <textarea id="chat-input" rows="2" placeholder="输入你的问题..." onkeydown="handleChatKeydown(event)"></textarea>
+                        <button id="chat-send-btn" onclick="sendChatMessage()">发送</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- 展开面板按钮 -->
-    <button id="expand-panel-btn" onclick="openTranslationPanel()">翻译面板</button>
+    <button id="expand-panel-btn" onclick="openSidePanel()">AI助手</button>
 
     <!-- PDF.js库 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -554,35 +777,80 @@
             document.getElementById('next-btn').disabled = currentPage >= pdfDoc.numPages;
         }
 
-        // ========== 翻译面板功能 ==========
+        // ========== 侧边栏面板功能 ==========
 
         let isPanelOpen = true;
+        let currentTab = 'translation';
+        let currentPaperId = getQueryParam('paper_id');
+        let chatHistory = [];
+        let speedReadCache = null;
 
-        // 切换翻译面板
-        function toggleTranslationPanel() {
-            if (isPanelOpen) {
-                closeTranslationPanel();
-            } else {
-                openTranslationPanel();
+        // Tab切换
+        function switchTab(tabName) {
+            // 更新Tab按钮状态
+            document.querySelectorAll('.panel-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // 更新内容显示
+            document.querySelectorAll('.panel-content').forEach(content => {
+                content.classList.remove('active');
+            });
+
+            currentTab = tabName;
+
+            if (tabName === 'translation') {
+                document.getElementById('translation-content').classList.add('active');
+            } else if (tabName === 'speedread') {
+                document.getElementById('speedread-content').classList.add('active');
+            } else if (tabName === 'chat') {
+                document.getElementById('chat-content').classList.add('active');
+                if (chatHistory.length === 0) {
+                    loadChatHistory();
+                }
             }
         }
 
-        // 打开翻译面板
-        function openTranslationPanel() {
-            document.getElementById('translation-panel').classList.remove('collapsed');
+        // 打开侧边面板
+        function openSidePanel() {
+            document.getElementById('side-panel').classList.remove('collapsed');
             document.getElementById('expand-panel-btn').style.display = 'none';
-            document.getElementById('toggle-translation-btn').classList.add('active');
-            document.getElementById('translate-icon').textContent = '✓';
+            if (document.getElementById('toggle-translation-btn')) {
+                document.getElementById('toggle-translation-btn').classList.add('active');
+                document.getElementById('translate-icon').textContent = '✓';
+            }
             isPanelOpen = true;
         }
 
-        // 关闭翻译面板
-        function closeTranslationPanel() {
-            document.getElementById('translation-panel').classList.add('collapsed');
+        // 关闭侧边面板
+        function closeSidePanel() {
+            document.getElementById('side-panel').classList.add('collapsed');
             document.getElementById('expand-panel-btn').style.display = 'block';
-            document.getElementById('toggle-translation-btn').classList.remove('active');
-            document.getElementById('translate-icon').textContent = '🌐';
+            if (document.getElementById('toggle-translation-btn')) {
+                document.getElementById('toggle-translation-btn').classList.remove('active');
+                document.getElementById('translate-icon').textContent = '🌐';
+            }
             isPanelOpen = false;
+        }
+
+        // 兼容旧函数名
+        function toggleTranslationPanel() {
+            if (isPanelOpen) {
+                closeSidePanel();
+            } else {
+                openSidePanel();
+                switchTab('translation');
+            }
+        }
+
+        function openTranslationPanel() {
+            openSidePanel();
+            switchTab('translation');
+        }
+
+        function closeTranslationPanel() {
+            closeSidePanel();
         }
 
         // 获取选中文本的更可靠方法
@@ -736,6 +1004,204 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ========== AI速读功能 ==========
+
+        async function generateSpeedRead() {
+            if (!currentPaperId) {
+                alert('无法获取论文ID');
+                return;
+            }
+
+            const btnText = document.getElementById('speedread-btn-text');
+            const spinner = document.getElementById('speedread-spinner');
+            const resultDiv = document.getElementById('speedread-result');
+
+            btnText.classList.add('d-none');
+            spinner.classList.remove('d-none');
+
+            try {
+                const response = await fetch(`/api/papers/${currentPaperId}/speed-read`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+                speedReadCache = data.content;
+
+                // 渲染速读内容
+                resultDiv.innerHTML = formatSpeedRead(data.content);
+
+            } catch (error) {
+                console.error('生成速读失败:', error);
+                resultDiv.innerHTML = `
+                    <div style="text-align: center; padding: 40px 20px; color: #dc3545;">
+                        <p>❌ 生成失败</p>
+                        <p style="font-size: 12px;">${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                btnText.classList.remove('d-none');
+                spinner.classList.add('d-none');
+            }
+        }
+
+        function formatSpeedRead(text) {
+            // 将文本格式化为HTML
+            const lines = text.split('\n');
+            let html = '';
+            let currentSection = '';
+
+            lines.forEach(line => {
+                line = line.trim();
+                if (!line) return;
+
+                // 检测章节标题（一、二、三...）
+                if (/^[一二三四五六七八九十]+、/.test(line)) {
+                    html += `<h3>${escapeHtml(line)}</h3>`;
+                } else if (line.includes('：')) {
+                    // 包含冒号的行，加粗冒号前的内容
+                    const parts = line.split('：');
+                    html += `<p><strong>${escapeHtml(parts[0])}：</strong>${escapeHtml(parts.slice(1).join('：'))}</p>`;
+                } else {
+                    html += `<p>${escapeHtml(line)}</p>`;
+                }
+            });
+
+            return html;
+        }
+
+        function copySpeedRead() {
+            if (!speedReadCache) {
+                alert('请先生成速读');
+                return;
+            }
+
+            navigator.clipboard.writeText(speedReadCache).then(() => {
+                alert('✓ 已复制到剪贴板');
+            }).catch(err => {
+                console.error('复制失败:', err);
+                alert('复制失败');
+            });
+        }
+
+        // ========== AI对话功能 ==========
+
+        async function loadChatHistory() {
+            if (!currentPaperId) return;
+
+            try {
+                const response = await fetch(`/api/conversations/paper/${currentPaperId}`);
+                if (!response.ok) return;
+
+                chatHistory = await response.json();
+                renderChatHistory();
+            } catch (error) {
+                console.error('加载对话历史失败:', error);
+            }
+        }
+
+        function renderChatHistory() {
+            const historyDiv = document.getElementById('chat-history');
+
+            if (chatHistory.length === 0) {
+                historyDiv.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">💬</div>
+                        <p>开始与AI讨论这篇论文</p>
+                    </div>
+                `;
+                return;
+            }
+
+            historyDiv.innerHTML = chatHistory.map(msg => {
+                const time = new Date(msg.created_at).toLocaleTimeString('zh-CN', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                return `
+                    <div class="chat-message ${msg.role}">
+                        <div class="message-bubble">${escapeHtml(msg.content)}</div>
+                        <small class="message-time">${time}</small>
+                    </div>
+                `;
+            }).join('');
+
+            // 滚动到底部
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        }
+
+        async function sendChatMessage() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            if (!currentPaperId) {
+                alert('无法获取论文ID');
+                return;
+            }
+
+            const sendBtn = document.getElementById('chat-send-btn');
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'AI思考中...';
+
+            // 添加用户消息到界面
+            chatHistory.push({
+                role: 'user',
+                content: message,
+                created_at: new Date().toISOString()
+            });
+            renderChatHistory();
+            input.value = '';
+
+            try {
+                const response = await fetch('/api/conversations/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        paper_id: parseInt(currentPaperId),
+                        user_message: message
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('AI回复失败');
+                }
+
+                const data = await response.json();
+
+                // 添加AI回复
+                chatHistory.push({
+                    role: 'assistant',
+                    content: data.content,
+                    created_at: data.created_at
+                });
+                renderChatHistory();
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                chatHistory.push({
+                    role: 'assistant',
+                    content: '抱歉，AI回复失败: ' + error.message,
+                    created_at: new Date().toISOString()
+                });
+                renderChatHistory();
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+            }
+        }
+
+        function handleChatKeydown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendChatMessage();
+            }
         }
 
         // 键盘快捷键

@@ -657,3 +657,92 @@ async def pdf_proxy(paper_id: int, db: Client = Depends(get_db)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"PDF代理失败: {str(e)}")
+
+
+@router.post("/{paper_id}/speed-read")
+async def generate_speed_read(paper_id: int, db: Client = Depends(get_db)):
+    """
+    生成论文速读
+    使用AI提取论文的关键信息，生成结构化速读内容
+    """
+    try:
+        # 获取论文信息
+        response = db.table("papers").select("*").eq("id", paper_id).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="论文不存在")
+
+        paper = response.data[0]
+
+        # 构建用于速读的内容
+        content_parts = []
+        if paper.get("title"):
+            content_parts.append(f"标题：{paper['title']}")
+        if paper.get("authors"):
+            content_parts.append(f"作者：{paper['authors']}")
+        if paper.get("year"):
+            content_parts.append(f"年份：{paper['year']}")
+        if paper.get("abstract"):
+            content_parts.append(f"摘要：{paper['abstract']}")
+        if paper.get("pdf_text_content"):
+            # 限制文本长度，避免超过token限制
+            text_content = paper["pdf_text_content"][:15000]
+            content_parts.append(f"\n论文内容：\n{text_content}")
+
+        if not content_parts:
+            raise HTTPException(status_code=400, detail="论文内容不足，无法生成速读")
+
+        paper_content = "\n\n".join(content_parts)
+
+        # 构建AI提示词
+        prompt = f"""请为以下论文生成结构化速读，严格按照以下格式输出：
+
+一、基本信息
+标题：[论文标题]
+作者：[作者列表]
+关键词：[提取3-5个关键词]
+doi：[如果有则填写，否则写"文本中未涉及相关内容"]
+
+二、文章概述
+[用1-2段话概述论文的核心内容，包括提出的框架/方法、解决的问题、主要贡献]
+
+三、研究背景
+[说明研究领域现状、存在的问题、为什么需要这项研究]
+
+四、研究思路
+[说明论文的研究方法、技术路线、实验设计等]
+
+五、研究结果
+[列举主要实验结果、性能指标、与其他方法的对比等]
+
+六、研究结论、不足与展望
+研究结论：[总结主要结论]
+研究的创新性：[列举1-3点创新]
+研究的不足之处：[列举1-3点不足]
+研究展望：[未来可能的研究方向]
+研究意义：[理论和应用价值]
+
+论文内容：
+{paper_content}
+
+请严格按照上述格式生成速读，不要添加额外的内容。"""
+
+        # 调用AI生成速读
+        ai_response = await ai_manager.chat(
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3  # 较低的温度以获得更稳定的输出
+        )
+
+        speed_read_content = ai_response.strip()
+
+        # 返回速读内容
+        return {
+            "success": True,
+            "content": speed_read_content,
+            "paper_id": paper_id
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成速读失败: {str(e)}")
