@@ -1,8 +1,7 @@
 """数据模型定义"""
 from datetime import datetime
-from typing import Optional, List, Any, Union
-from pydantic import BaseModel, Field, field_validator
-import json
+from typing import Optional, List, Any
+from pydantic import BaseModel, Field
 
 
 class PaperBase(BaseModel):

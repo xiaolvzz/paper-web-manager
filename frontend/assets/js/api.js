@@ -15,17 +15,29 @@ async function request(url, options = {}) {
             },
         });
 
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || '请求失败');
-        }
-
         // 处理204 No Content
         if (response.status === 204) {
             return null;
         }
 
-        return await response.json();
+        // 获取响应文本
+        const text = await response.text();
+
+        // 尝试解析JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            // 如果不是JSON，说明服务器返回了HTML错误页面
+            console.error('❌ Server returned non-JSON response:', text.substring(0, 200));
+            throw new Error(`服务器错误 (${response.status}): ${text.substring(0, 100).replace(/<[^>]*>/g, '')}`);
+        }
+
+        if (!response.ok) {
+            throw new Error(data.detail || `请求失败 (${response.status})`);
+        }
+
+        return data;
     } catch (error) {
         console.error('API Error:', error);
         throw error;
