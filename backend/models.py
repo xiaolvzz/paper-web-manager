@@ -1,7 +1,8 @@
 """数据模型定义"""
 from datetime import datetime
-from typing import Optional, List
-from pydantic import BaseModel, Field
+from typing import Optional, List, Any, Union
+from pydantic import BaseModel, Field, field_validator
+import json
 
 
 class PaperBase(BaseModel):
@@ -20,8 +21,8 @@ class PaperBase(BaseModel):
     # 新增字段
     source_code_url: Optional[str] = Field(None, description="源码链接")
     main_work: Optional[str] = Field(None, description="主要工作描述")
-    innovations: Optional[List[str]] = Field(None, description="创新点列表")
-    structured_tags: Optional[List[str]] = Field(None, description="结构化标签列表")
+    innovations: Optional[Any] = Field(None, description="创新点列表（JSONB）")
+    structured_tags: Optional[Any] = Field(None, description="结构化标签列表（JSONB）")
     auto_analyzed: Optional[bool] = Field(None, description="是否已自动分析")
     auto_analysis_date: Optional[datetime] = Field(None, description="自动分析时间")
 
@@ -47,8 +48,8 @@ class PaperUpdate(BaseModel):
     # 新增字段
     source_code_url: Optional[str] = None
     main_work: Optional[str] = None
-    innovations: Optional[List[str]] = None
-    structured_tags: Optional[List[str]] = None
+    innovations: Optional[Any] = None
+    structured_tags: Optional[Any] = None
     auto_analyzed: Optional[bool] = None
     auto_analysis_date: Optional[datetime] = None
 
