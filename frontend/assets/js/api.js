@@ -197,18 +197,20 @@ function showToast(message, type = 'success') {
     let container = document.querySelector('.toast-container');
     if (!container) {
         container = document.createElement('div');
-        container.className = 'toast-container';
+        container.className = 'toast-container position-fixed top-0 end-0 p-3';
+        container.style.zIndex = '9999';
         document.body.appendChild(container);
     }
 
-    const toastElement = document.createElement('div');
-    toastElement.innerHTML = toastHtml;
-    container.appendChild(toastElement.firstElementChild);
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = toastHtml;
+    const toastElement = wrapper.firstElementChild;
+    container.appendChild(toastElement);
 
-    const toast = new bootstrap.Toast(toastElement.firstElementChild);
+    const toast = new bootstrap.Toast(toastElement);
     toast.show();
 
-    toastElement.firstElementChild.addEventListener('hidden.bs.toast', () => {
+    toastElement.addEventListener('hidden.bs.toast', () => {
         toastElement.remove();
     });
 }
