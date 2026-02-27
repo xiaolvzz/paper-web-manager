@@ -296,21 +296,40 @@ async def import_from_arxiv(
         # 从arXiv获取论文信息
         arxiv_data = await fetch_arxiv_paper(request.arxiv_input)
 
-        # 更新论文信息
+        # 更新论文信息（只更新基本字段，确保兼容性）
         update_data = {
             "title": arxiv_data["title"],
             "authors": arxiv_data["authors"],
             "year": arxiv_data["year"],
             "abstract": arxiv_data["abstract"],
-            "arxiv_id": arxiv_data["arxiv_id"],
             "pdf_path": arxiv_data["pdf_url"]
         }
+
+        # arxiv_id可能是新字段，单独处理
+        try:
+            update_data["arxiv_id"] = arxiv_data["arxiv_id"]
+        except:
+            pass
 
         # 如果成功提取了PDF文本，也更新
         if arxiv_data.get("pdf_text_content"):
             update_data["pdf_text_content"] = arxiv_data["pdf_text_content"]
 
-        db.table("papers").update(update_data).eq("id", paper_id).execute()
+        # 执行更新
+        try:
+            result = db.table("papers").update(update_data).eq("id", paper_id).execute()
+            print(f"✓ Updated paper {paper_id} with arXiv data: {update_data.keys()}")
+        except Exception as update_error:
+            # 如果更新失败，尝试只更新基本字段
+            print(f"Warning: Full update failed, trying basic fields only: {update_error}")
+            basic_update = {
+                "title": arxiv_data["title"],
+                "authors": arxiv_data["authors"],
+                "year": arxiv_data["year"],
+                "abstract": arxiv_data["abstract"],
+                "pdf_path": arxiv_data["pdf_url"]
+            }
+            result = db.table("papers").update(basic_update).eq("id", paper_id).execute()
 
         return {
             "message": "arXiv论文导入成功",
@@ -525,3 +544,40 @@ async def auto_analyze_paper(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"自动分析失败: {str(e)}")
+
+
+# ========== 调试端点 ==========
+
+@router.get("/{paper_id}/debug")
+async def debug_paper(paper_id: int, db: Client = Depends(get_db)):
+    """
+    调试端点：返回论文的原始数据库字段
+    """
+    try:
+        response = db.table("papers").select("*").eq("id", paper_id).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="论文不存在")
+
+        paper = response.data[0]
+
+        # 返回所有字段和它们的值
+        return {
+            "paper_id": paper_id,
+            "fields": {
+                "pdf_path": paper.get("pdf_path"),
+                "pdf_storage_path": paper.get("pdf_storage_path"),
+                "source_code_url": paper.get("source_code_url"),
+                "github_url": paper.get("github_url"),
+                "arxiv_id": paper.get("arxiv_id"),
+                "pdf_text_content_length": len(paper.get("pdf_text_content", "") or ""),
+                "auto_analyzed": paper.get("auto_analyzed"),
+                "main_work": paper.get("main_work"),
+            },
+            "all_fields": list(paper.keys()),
+            "raw_data": paper
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"调试失败: {str(e)}")

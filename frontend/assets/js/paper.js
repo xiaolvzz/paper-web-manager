@@ -1216,6 +1216,17 @@ const originalLoadPaperDetails = loadPaperDetails;
 loadPaperDetails = async function(paperId) {
     await originalLoadPaperDetails(paperId);
 
+    // 调试：输出当前论文的PDF字段
+    console.log('📋 论文详情加载完成:', {
+        id: currentPaper.id,
+        title: currentPaper.title,
+        pdf_path: currentPaper.pdf_path,
+        pdf_storage_path: currentPaper.pdf_storage_path,
+        source_code_url: currentPaper.source_code_url,
+        github_url: currentPaper.github_url,
+        has_pdf_text: !!currentPaper.pdf_text_content
+    });
+
     // 加载源码信息
     loadCodeInfo();
 
@@ -1229,3 +1240,47 @@ loadPaperDetails = async function(paperId) {
         }, 1000);
     }
 };
+
+/**
+ * 调试函数：获取论文的原始数据
+ */
+async function debugPaper() {
+    if (!currentPaper) {
+        console.error('没有加载论文');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaper.id}/debug`);
+        if (!response.ok) {
+            throw new Error('调试请求失败');
+        }
+
+        const data = await response.json();
+        console.log('🔍 论文调试信息:', data);
+        console.table(data.fields);
+
+        // 显示在页面上
+        alert(`论文 ID: ${data.paper_id}
+
+PDF字段检查：
+- pdf_path: ${data.fields.pdf_path || '(空)'}
+- pdf_storage_path: ${data.fields.pdf_storage_path || '(空)'}
+- source_code_url: ${data.fields.source_code_url || '(空)'}
+- github_url: ${data.fields.github_url || '(空)'}
+- arxiv_id: ${data.fields.arxiv_id || '(空)'}
+
+PDF文本长度: ${data.fields.pdf_text_content_length} 字符
+已分析: ${data.fields.auto_analyzed ? '是' : '否'}
+
+所有字段: ${data.all_fields.length} 个
+详情请查看控制台 (F12)`);
+
+    } catch (error) {
+        console.error('调试失败:', error);
+        alert('调试失败: ' + error.message);
+    }
+}
+
+// 全局暴露调试函数（可在控制台调用）
+window.debugPaper = debugPaper;
