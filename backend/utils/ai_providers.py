@@ -71,6 +71,12 @@ class ZhipuAIProvider(AIProvider):
     API_BASE = "https://open.bigmodel.cn/api/paas/v4"
 
     def __init__(self, api_key: str, model: str = "glm-4-flash"):
+        """
+        支持的模型：
+        - glm-4-flash: 完全免费！无限制 (推荐日常使用)
+        - glm-4-air: 均衡版 (1元/M tokens)
+        - glm-4-plus: 旗舰版 (50元/M tokens)
+        """
         super().__init__(api_key, model)
 
     async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
@@ -105,6 +111,13 @@ class QwenProvider(AIProvider):
     API_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 
     def __init__(self, api_key: str, model: str = "qwen-turbo"):
+        """
+        支持的模型：
+        - qwen-turbo: 快速廉价 (0.3元/M input)
+        - qwen-plus: 增强版 (4元/M input)
+        - qwen-max: 最强版 (20元/M input)
+        - qwen-long: 长文本 (0.5元/M input, 1M tokens上下文)
+        """
         super().__init__(api_key, model)
 
     async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
@@ -177,30 +190,31 @@ class AIManager:
     def _initialize_provider(self):
         """
         按优先级初始化AI提供商：
-        1. DeepSeek (性价比最高)
-        2. 智谱AI (免费额度)
-        3. 通义千问
-        4. Groq (备选)
+        1. 智谱AI GLM-4-Flash (完全免费！)
+        2. DeepSeek (极低成本)
+        3. 通义千问 Qwen-Turbo (廉价)
+        4. Groq (备选，免费但可能被限制)
         """
-        # 1. 尝试DeepSeek
+        # 1. 优先使用智谱AI GLM-4-Flash (完全免费！)
+        zhipu_key = os.getenv("ZHIPU_API_KEY")
+        if zhipu_key:
+            self.provider = ZhipuAIProvider(zhipu_key, model="glm-4-flash")
+            print("✓ 使用 智谱AI GLM-4-Flash (完全免费)")
+            return
+
+        # 2. 尝试DeepSeek (极低成本)
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         if deepseek_key:
             self.provider = DeepSeekProvider(deepseek_key)
-            print("✓ 使用 DeepSeek AI (极低成本)")
-            return
-
-        # 2. 尝试智谱AI
-        zhipu_key = os.getenv("ZHIPU_API_KEY")
-        if zhipu_key:
-            self.provider = ZhipuAIProvider(zhipu_key)
-            print("✓ 使用 智谱AI (GLM-4)")
+            print("✓ 使用 DeepSeek-V3 (极低成本)")
             return
 
         # 3. 尝试通义千问
         qwen_key = os.getenv("QWEN_API_KEY")
+        qwen_model = os.getenv("QWEN_MODEL", "qwen-turbo")  # 支持自定义模型
         if qwen_key:
-            self.provider = QwenProvider(qwen_key)
-            print("✓ 使用 通义千问")
+            self.provider = QwenProvider(qwen_key, model=qwen_model)
+            print(f"✓ 使用 通义千问 {qwen_model}")
             return
 
         # 4. 尝试Groq（备选）
