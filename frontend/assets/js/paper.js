@@ -514,13 +514,32 @@ async function importFromArxiv() {
 
         if (response.ok) {
             const data = await response.json();
-            statusDiv.innerHTML = '<div class="alert alert-success mt-2">✓ arXiv论文导入成功！页面将刷新...</div>';
+
+            // 显示详细的导入结果
+            let resultHtml = '<div class="alert alert-success mt-2">';
+            resultHtml += '<strong>✓ arXiv论文导入成功！</strong><br>';
+            resultHtml += `<small>`;
+            resultHtml += `arXiv ID: ${data.arxiv_id}<br>`;
+            if (data.pdf_url) {
+                resultHtml += `PDF链接: <a href="${data.pdf_url}" target="_blank">${data.pdf_url}</a><br>`;
+            }
+            resultHtml += `PDF文本: ${data.has_pdf_text ? '已提取' : '未提取'}<br>`;
+            resultHtml += `更新字段: ${data.updated_fields ? data.updated_fields.join(', ') : '未知'}<br>`;
+            resultHtml += `PDF路径设置: ${data.pdf_path_set ? '✓ 是' : '✗ 否'}<br>`;
+            if (data.error) {
+                resultHtml += `<span class="text-warning">警告: ${data.error}</span><br>`;
+            }
+            resultHtml += `</small>页面将在2秒后刷新...</div>`;
+
+            statusDiv.innerHTML = resultHtml;
             showToast('arXiv论文导入成功');
-            
+
+            console.log('📥 arXiv导入结果:', data);
+
             // 刷新页面数据
             setTimeout(() => {
                 window.location.reload();
-            }, 1500);
+            }, 2000);
         } else {
             const error = await response.json();
             statusDiv.innerHTML = `<div class="alert alert-danger mt-2">导入失败: ${error.detail}</div>`;

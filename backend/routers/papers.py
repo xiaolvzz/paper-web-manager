@@ -296,32 +296,52 @@ async def import_from_arxiv(
         # 从arXiv获取论文信息
         arxiv_data = await fetch_arxiv_paper(request.arxiv_input)
 
-        # 更新论文信息（只更新基本字段，确保兼容性）
+        # 调试：打印arXiv返回的数据
+        print(f"📥 arXiv data received for paper {paper_id}:")
+        print(f"  - arxiv_id: {arxiv_data.get('arxiv_id')}")
+        print(f"  - title: {arxiv_data.get('title')[:50]}...")
+        print(f"  - pdf_url: {arxiv_data.get('pdf_url')}")
+        print(f"  - has_pdf_text: {bool(arxiv_data.get('pdf_text_content'))}")
+
+        # 更新论文信息
         update_data = {
             "title": arxiv_data["title"],
             "authors": arxiv_data["authors"],
             "year": arxiv_data["year"],
             "abstract": arxiv_data["abstract"],
-            "pdf_path": arxiv_data["pdf_url"]
+            "pdf_path": arxiv_data["pdf_url"],  # 关键字段
+            "arxiv_id": arxiv_data["arxiv_id"]
         }
-
-        # arxiv_id可能是新字段，单独处理
-        try:
-            update_data["arxiv_id"] = arxiv_data["arxiv_id"]
-        except:
-            pass
 
         # 如果成功提取了PDF文本，也更新
         if arxiv_data.get("pdf_text_content"):
             update_data["pdf_text_content"] = arxiv_data["pdf_text_content"]
 
+        # 调试：打印将要更新的数据
+        print(f"📝 Updating paper {paper_id} with data:")
+        for key, value in update_data.items():
+            if key == "abstract":
+                print(f"  - {key}: {str(value)[:50]}...")
+            elif key == "pdf_text_content":
+                print(f"  - {key}: {len(value)} chars")
+            else:
+                print(f"  - {key}: {value}")
+
         # 执行更新
         try:
             result = db.table("papers").update(update_data).eq("id", paper_id).execute()
-            print(f"✓ Updated paper {paper_id} with arXiv data: {update_data.keys()}")
+            print(f"✅ Successfully updated paper {paper_id}")
+
+            # 验证更新结果
+            if result.data:
+                updated_paper = result.data[0]
+                print(f"✓ Verification - pdf_path in DB: {updated_paper.get('pdf_path')}")
+
         except Exception as update_error:
             # 如果更新失败，尝试只更新基本字段
-            print(f"Warning: Full update failed, trying basic fields only: {update_error}")
+            print(f"⚠️ Full update failed: {update_error}")
+            print(f"Retrying with basic fields only...")
+
             basic_update = {
                 "title": arxiv_data["title"],
                 "authors": arxiv_data["authors"],
@@ -330,12 +350,16 @@ async def import_from_arxiv(
                 "pdf_path": arxiv_data["pdf_url"]
             }
             result = db.table("papers").update(basic_update).eq("id", paper_id).execute()
+            print(f"✅ Basic update succeeded")
 
         return {
             "message": "arXiv论文导入成功",
             "arxiv_id": arxiv_data["arxiv_id"],
+            "pdf_url": arxiv_data.get("pdf_url"),  # 添加到返回值，便于前端调试
             "has_pdf_text": bool(arxiv_data.get("pdf_text_content")),
-            "error": arxiv_data.get("error")
+            "error": arxiv_data.get("error"),
+            "updated_fields": list(update_data.keys()),  # 返回更新的字段列表
+            "pdf_path_set": update_data.get("pdf_path") is not None  # 明确标记pdf_path是否被设置
         }
 
     except HTTPException:
