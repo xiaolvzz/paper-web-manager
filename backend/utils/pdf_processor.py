@@ -1,9 +1,16 @@
 """PDF处理工具"""
-import fitz  # PyMuPDF
 import os
 import tempfile
 from typing import Tuple
 from fastapi import UploadFile, HTTPException
+
+# 尝试导入PyMuPDF，如果失败则禁用PDF功能
+try:
+    import fitz  # PyMuPDF
+    PDF_AVAILABLE = True
+except ImportError:
+    PDF_AVAILABLE = False
+    fitz = None
 
 
 def extract_text_from_pdf(pdf_file_path: str) -> str:
@@ -16,6 +23,9 @@ def extract_text_from_pdf(pdf_file_path: str) -> str:
     Returns:
         提取的文本内容
     """
+    if not PDF_AVAILABLE:
+        raise Exception("PDF处理功能在当前环境不可用（PyMuPDF未安装）")
+
     try:
         doc = fitz.open(pdf_file_path)
         text_content = []

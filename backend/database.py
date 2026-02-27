@@ -45,6 +45,11 @@ def get_db() -> Client:
     return db.get_client()
 
 
+def get_supabase_client() -> Client:
+    """获取Supabase客户端（非依赖注入版本）"""
+    return db.get_client()
+
+
 # 数据库表创建SQL（在Supabase SQL编辑器中执行）
 SQL_SCHEMA = """
 -- 论文表

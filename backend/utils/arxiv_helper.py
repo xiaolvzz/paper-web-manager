@@ -6,7 +6,14 @@ import os
 from typing import Dict, Optional
 from fastapi import HTTPException
 
-from .pdf_processor import extract_text_from_pdf
+# PDF处理：尝试导入，如果失败则使用备用方案
+try:
+    from .pdf_processor import extract_text_from_pdf
+    PDF_SUPPORT = True
+except ImportError:
+    PDF_SUPPORT = False
+    def extract_text_from_pdf(path):
+        return None
 
 
 def extract_arxiv_id(input_str: str) -> str:
@@ -66,17 +73,22 @@ async def fetch_arxiv_paper(arxiv_input: str) -> Dict:
             tmp_pdf_path = tmp_file.name
 
         try:
-            # 下载PDF
-            paper.download_pdf(filename=tmp_pdf_path)
+            if PDF_SUPPORT:
+                # 下载PDF
+                paper.download_pdf(filename=tmp_pdf_path)
 
-            # 提取文本
-            pdf_text = extract_text_from_pdf(tmp_pdf_path)
-            paper_data["pdf_text_content"] = pdf_text
+                # 提取文本
+                pdf_text = extract_text_from_pdf(tmp_pdf_path)
+                paper_data["pdf_text_content"] = pdf_text
+            else:
+                # PDF处理不可用
+                paper_data["pdf_text_content"] = None
+                paper_data["error"] = "PDF处理在当前环境不可用，仅导入元数据"
 
         except Exception as e:
             # PDF下载或解析失败不影响元数据
             paper_data["pdf_text_content"] = None
-            paper_data["error"] = f"PDF下载失败: {str(e)}"
+            paper_data["error"] = f"PDF处理失败: {str(e)}"
 
         finally:
             # 删除临时文件
