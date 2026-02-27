@@ -60,13 +60,17 @@ function renderPaperInfo() {
     document.getElementById('paperTitle').textContent = currentPaper.title;
     document.title = `${currentPaper.title} - 论文管理系统`;
 
-    // 显示/隐藏查看PDF按钮
+    // 显示/隐藏查看PDF按钮（检查pdf_path或pdf_storage_path）
     const viewPdfBtn = document.getElementById('viewPdfBtn');
-    if (currentPaper.pdf_path) {
+    const hasPdf = currentPaper.pdf_path || currentPaper.pdf_storage_path;
+    if (hasPdf) {
         viewPdfBtn.style.display = 'inline-block';
     } else {
         viewPdfBtn.style.display = 'none';
     }
+
+    // 获取实际的PDF路径（优先使用pdf_path，否则使用pdf_storage_path）
+    const pdfUrl = currentPaper.pdf_path || currentPaper.pdf_storage_path;
 
     const infoHtml = `
         <div class="row">
@@ -83,7 +87,7 @@ function renderPaperInfo() {
             ` : ''}
             <div class="col-12 mb-2">
                 <strong>PDF：</strong>
-                ${currentPaper.pdf_path ? `<a href="${currentPaper.pdf_path}" target="_blank">${currentPaper.pdf_path}</a>` : '未设置'}
+                ${pdfUrl ? `<a href="${pdfUrl}" target="_blank">${pdfUrl}</a>` : '未设置'}
             </div>
             ${currentPaper.github_url ? `
                 <div class="col-12 mb-2">
@@ -870,13 +874,16 @@ function handleChatKeydown(event) {
  * 打开PDF查看器
  */
 function viewPDF() {
-    if (!currentPaper || !currentPaper.pdf_path) {
+    // 优先使用pdf_path，否则使用pdf_storage_path
+    const pdfPath = currentPaper?.pdf_path || currentPaper?.pdf_storage_path;
+
+    if (!currentPaper || !pdfPath) {
         showToast('该论文没有PDF文件', 'error');
         return;
     }
 
     // 构建PDF查看器URL
-    const pdfUrl = encodeURIComponent(currentPaper.pdf_path);
+    const pdfUrl = encodeURIComponent(pdfPath);
     const title = encodeURIComponent(currentPaper.title);
     const viewerUrl = `/pdf-viewer?url=${pdfUrl}&title=${title}&paper_id=${currentPaper.id}`;
 
@@ -1059,14 +1066,17 @@ function loadCodeInfo() {
     const codeOverview = document.getElementById('codeOverview');
     const noCodeHint = document.getElementById('noCodeHint');
 
-    if (currentPaper.source_code_url) {
-        sourceCodeUrl.value = currentPaper.source_code_url;
+    // 优先使用source_code_url，如果没有则使用github_url（兼容旧字段）
+    const codeUrl = currentPaper.source_code_url || currentPaper.github_url;
+
+    if (codeUrl) {
+        sourceCodeUrl.value = codeUrl;
         codeOverview.style.display = 'block';
         noCodeHint.style.display = 'none';
 
         // 如果是GitHub链接，尝试获取仓库信息
-        if (currentPaper.source_code_url.includes('github.com')) {
-            fetchGitHubRepoInfo(currentPaper.source_code_url);
+        if (codeUrl.includes('github.com')) {
+            fetchGitHubRepoInfo(codeUrl);
         }
     } else {
         sourceCodeUrl.value = '';

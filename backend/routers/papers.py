@@ -253,13 +253,16 @@ async def upload_pdf(
         }
         if storage_path:
             update_data["pdf_storage_path"] = storage_path
+            # 同时设置pdf_path，这样前端可以显示"有PDF"
+            update_data["pdf_path"] = storage_path
 
         db.table("papers").update(update_data).eq("id", paper_id).execute()
 
         return {
             "message": "PDF上传成功",
             "text_length": len(extracted_text),
-            "storage_path": storage_path
+            "storage_path": storage_path,
+            "pdf_path": storage_path  # 返回给前端使用
         }
 
     except HTTPException:
@@ -473,19 +476,36 @@ async def auto_analyze_paper(
             # 7. 更新数据库（如果需要）
             updated = False
             if update_db:
-                update_data = {
-                    "main_work": analysis_result.main_work,
-                    "innovations": json.dumps(analysis_result.innovations, ensure_ascii=False),
-                    "structured_tags": json.dumps(analysis_result.structured_tags, ensure_ascii=False),
-                    "auto_analyzed": True,
-                    "auto_analysis_date": datetime.now().isoformat()
-                }
+                update_data = {}
 
-                if analysis_result.source_code_url:
-                    update_data["source_code_url"] = analysis_result.source_code_url
+                # 只添加存在的字段（兼容数据库迁移前的情况）
+                try:
+                    # 尝试更新所有新字段
+                    update_data = {
+                        "main_work": analysis_result.main_work,
+                        "innovations": json.dumps(analysis_result.innovations, ensure_ascii=False),
+                        "structured_tags": json.dumps(analysis_result.structured_tags, ensure_ascii=False),
+                        "auto_analyzed": True,
+                        "auto_analysis_date": datetime.now().isoformat()
+                    }
 
-                db.table("papers").update(update_data).eq("id", paper_id).execute()
-                updated = True
+                    if analysis_result.source_code_url:
+                        update_data["source_code_url"] = analysis_result.source_code_url
+
+                    db.table("papers").update(update_data).eq("id", paper_id).execute()
+                    updated = True
+                except Exception as update_error:
+                    # 如果新字段不存在，至少尝试更新source_code_url到基本字段
+                    print(f"Warning: 更新新字段失败，尝试基本更新: {update_error}")
+                    try:
+                        if analysis_result.source_code_url:
+                            # 尝试只更新github_url作为兼容字段
+                            db.table("papers").update({
+                                "github_url": analysis_result.source_code_url
+                            }).eq("id", paper_id).execute()
+                            updated = True
+                    except:
+                        pass
 
             return AutoAnalysisResponse(
                 success=True,
