@@ -112,7 +112,7 @@
 
         #pdf-canvas {
             display: block;
-            width: 100%;
+            /* 不要用CSS缩放canvas，必须用实际尺寸 */
         }
 
         /* PDF文本层（可选择） - 必须精确对齐canvas */
@@ -421,16 +421,12 @@
                 const ctx = canvas.getContext('2d');
                 const textLayerDiv = document.getElementById('text-layer');
 
-                // 计算缩放比例
+                // 计算缩放比例和viewport
                 const viewport = page.getViewport({ scale: currentScale });
 
-                // 设置canvas的实际分辨率
+                // 设置canvas尺寸为viewport的实际尺寸（不使用CSS缩放）
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
-
-                // 确保canvas的显示尺寸也匹配
-                canvas.style.width = viewport.width + 'px';
-                canvas.style.height = viewport.height + 'px';
 
                 // 渲染canvas
                 const renderContext = {
@@ -445,14 +441,14 @@
                 // 清空旧的文本层
                 textLayerDiv.innerHTML = '';
 
-                // 关键：text layer必须和canvas完全一致的尺寸
-                textLayerDiv.style.width = canvas.style.width || canvas.width + 'px';
-                textLayerDiv.style.height = canvas.style.height || canvas.height + 'px';
+                // 关键：text layer必须和canvas的像素尺寸完全一致
+                textLayerDiv.style.width = viewport.width + 'px';
+                textLayerDiv.style.height = viewport.height + 'px';
                 textLayerDiv.style.position = 'absolute';
                 textLayerDiv.style.left = '0';
                 textLayerDiv.style.top = '0';
 
-                // 使用PDF.js renderTextLayer - 注意参数
+                // 使用PDF.js renderTextLayer - 必须使用相同的viewport
                 try {
                     const textLayerRender = pdfjsLib.renderTextLayer({
                         textContentSource: textContent,
@@ -461,7 +457,7 @@
                         enhanceTextSelection: true
                     });
                     await textLayerRender.promise;
-                    console.log('Text layer rendered successfully');
+                    console.log('Text layer rendered successfully, size:', viewport.width, 'x', viewport.height);
                 } catch (error) {
                     console.error('Text layer rendering error:', error);
                 }
