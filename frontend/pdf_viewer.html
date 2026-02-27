@@ -6,6 +6,8 @@
     <title>PDF查看器 - 论文管理系统</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="/assets/css/main.css" rel="stylesheet">
+    <!-- PDF.js Text Layer CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css">
     <style>
         * {
             margin: 0;
@@ -121,11 +123,11 @@
             right: 0;
             bottom: 0;
             overflow: hidden;
-            opacity: 0.2;
             line-height: 1.0;
+            opacity: 1;
         }
 
-        .textLayer > span {
+        .textLayer span {
             color: transparent;
             position: absolute;
             white-space: pre;
@@ -133,7 +135,11 @@
             transform-origin: 0% 0%;
         }
 
-        .textLayer > span::selection {
+        .textLayer span::selection {
+            background: rgba(0, 123, 255, 0.3);
+        }
+
+        .textLayer ::selection {
             background: rgba(0, 123, 255, 0.3);
         }
 
@@ -430,14 +436,21 @@
                 textLayerDiv.innerHTML = '';
                 textLayerDiv.style.width = canvas.width + 'px';
                 textLayerDiv.style.height = canvas.height + 'px';
+                textLayerDiv.style.left = '0';
+                textLayerDiv.style.top = '0';
 
-                // 创建文本层
-                pdfjsLib.renderTextLayer({
-                    textContentSource: textContent,
-                    container: textLayerDiv,
-                    viewport: viewport,
-                    textDivs: []
-                });
+                // 使用PDF.js renderTextLayer
+                try {
+                    await pdfjsLib.renderTextLayer({
+                        textContentSource: textContent,
+                        container: textLayerDiv,
+                        viewport: viewport,
+                        textDivs: [],
+                        enhanceTextSelection: true
+                    }).promise;
+                } catch (error) {
+                    console.warn('Text layer rendering error:', error);
+                }
 
                 currentPage = num;
                 document.getElementById('page-num').value = num;
@@ -532,6 +545,12 @@
                 const selection = window.getSelection();
                 const selectedText = selection.toString().trim();
 
+                // 调试：输出选择的文本
+                if (selectedText.length > 0) {
+                    console.log('Selected text:', selectedText);
+                    console.log('Text length:', selectedText.length);
+                }
+
                 if (selectedText.length > 0 && selectedText.length < 1000) {
                     // 确保面板是打开的
                     if (!isPanelOpen) {
@@ -541,7 +560,7 @@
                     // 翻译文本
                     await translateAndDisplay(selectedText);
                 }
-            }, 100);
+            }, 150);
         });
 
         // 翻译并显示
