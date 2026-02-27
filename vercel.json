@@ -1,34 +1,28 @@
 {
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "api/index.py"
+      "source": "/api/(.*)",
+      "destination": "/api/index"
     },
     {
-      "src": "/",
-      "dest": "/frontend/index.html"
+      "source": "/",
+      "destination": "/frontend/index.html"
     },
     {
-      "src": "/paper/(.*)",
-      "dest": "/frontend/paper.html"
+      "source": "/paper/(.*)",
+      "destination": "/frontend/paper.html"
     },
     {
-      "src": "/graph",
-      "dest": "/frontend/graph.html"
+      "source": "/graph",
+      "destination": "/frontend/graph.html"
     },
     {
-      "src": "/status",
-      "dest": "/frontend/status.html"
+      "source": "/status",
+      "destination": "/frontend/status.html"
     },
     {
-      "src": "/test-add",
-      "dest": "/frontend/test_add_paper.html"
+      "source": "/test-add",
+      "destination": "/frontend/test_add_paper.html"
     }
   ],
   "headers": [
