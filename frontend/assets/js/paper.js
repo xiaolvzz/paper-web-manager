@@ -6,6 +6,7 @@ let currentPaper = null;
 let currentAnalysis = null;
 let currentRelations = [];
 let allPapers = [];
+let currentPaperId = null;
 
 // 获取URL中的论文ID
 function getPaperId() {
@@ -23,8 +24,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // 保存paper ID
+    currentPaperId = paperId;
+
+    // 加载论文详情和关系
     await loadPaperDetails(paperId);
     await loadAllPapers(); // 为关联关系下拉列表加载所有论文
+
+    // 加载对话历史
+    await loadConversations();
+    // 检查AI配置状态
+    checkAIStatus();
+    // 检查论文内容状态
+    checkContentStatus();
 });
 
 // 加载论文详情
@@ -448,21 +460,6 @@ function copyAIOutput() {
 }
 
 // ========== 新增功能：论文内容处理 ==========
-
-let currentPaperId = null;
-
-// 更新页面加载时保存paper ID
-document.addEventListener('DOMContentLoaded', async () => {
-    currentPaperId = getPaperId();
-    if (currentPaperId) {
-        // 加载对话历史
-        await loadConversations();
-        // 检查AI配置状态
-        checkAIStatus();
-        // 检查论文内容状态
-        checkContentStatus();
-    }
-});
 
 /**
  * 从arXiv导入论文
