@@ -229,3 +229,73 @@ Vercel会自动检测更新并重新部署（约1分钟）。
 4. 善用关系图发现论文间的联系
 
 祝使用愉快！📚✨
+
+---
+
+## 🆕 2026-02-27 更新说明
+
+### 本次更新内容
+
+#### 1. 修复Vercel部署问题
+- 移除TestClient，使用原生ASGI处理（修复API 404和返回HTML问题）
+- 优化路由配置
+
+#### 2. 新增字段
+- **GitHub链接**：可以为每篇论文添加对应的GitHub代码仓库
+- **研究领域**：支持NLP、CV、RL、ML、Robotics等领域分类
+
+#### 3. AI助手功能
+- 使用Groq免费API生成中文论文摘要
+- 自动提取论文创新点
+- 一键复制到分析区
+
+### 更新部署步骤
+
+#### 步骤A：执行数据库迁移
+
+在Supabase SQL Editor中执行以下SQL：
+
+```sql
+-- 添加新字段
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS github_url TEXT;
+ALTER TABLE papers ADD COLUMN IF NOT EXISTS domain TEXT;
+
+-- 添加索引
+CREATE INDEX IF NOT EXISTS idx_papers_domain ON papers(domain);
+```
+
+#### 步骤B：配置Groq API Key（可选）
+
+AI助手功能需要Groq API Key：
+
+1. 访问 https://console.groq.com 注册（免费）
+2. 创建API Key
+3. 在Vercel项目设置 → Environment Variables 中添加：
+   - 变量名：`GROQ_API_KEY`
+   - 变量值：你的API key
+
+#### 步骤C：推送代码并部署
+
+```bash
+git add .
+git commit -m "fix: 修复部署问题并添加新功能"
+git push
+```
+
+Vercel会自动重新部署（约1-2分钟）。
+
+### 新功能使用指南
+
+#### 使用GitHub链接字段
+在添加论文时，填写"GitHub代码链接"输入框，保存后会在论文列表和详情页显示。
+
+#### 使用研究领域分类
+选择论文的研究领域，列表页会在标题旁显示领域badge，方便筛选。
+
+#### 使用AI助手
+1. 进入论文详情页
+2. 点击"生成中文摘要"或"提取创新点"
+3. AI会在几秒内返回结果
+4. 点击"复制到分析区"可以将AI输出复制到创新点分析框
+
+**注意：** AI功能需要配置GROQ_API_KEY环境变量。

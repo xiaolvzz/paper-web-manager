@@ -12,6 +12,8 @@ class PaperBase(BaseModel):
     pdf_path: Optional[str] = Field(None, description="PDF路径（本地或云盘链接）")
     abstract: Optional[str] = Field(None, description="摘要")
     tags: Optional[str] = Field(None, description="标签，逗号分隔")
+    github_url: Optional[str] = Field(None, description="GitHub代码仓库链接")
+    domain: Optional[str] = Field(None, description="研究领域（如NLP、CV、RL等）")
 
 
 class PaperCreate(PaperBase):
@@ -27,6 +29,8 @@ class PaperUpdate(BaseModel):
     pdf_path: Optional[str] = None
     abstract: Optional[str] = None
     tags: Optional[str] = None
+    github_url: Optional[str] = None
+    domain: Optional[str] = None
 
 
 class Paper(PaperBase):

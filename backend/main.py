@@ -5,13 +5,14 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from backend.routers import papers, analysis, relations, arxiv_search
+from backend.routers import papers, analysis, relations, arxiv_search, ai_assistant
 
 # 创建FastAPI应用
 app = FastAPI(
     title="论文管理系统",
     description="个人论文阅读和管理系统，支持关联关系和AI分析",
-    version="1.0.0"
+    version="1.0.0",
+    root_path="/api"  # Vercel部署时所有路由都在/api下
 )
 
 # CORS配置（开发环境）
@@ -28,6 +29,7 @@ app.include_router(papers.router)
 app.include_router(analysis.router)
 app.include_router(relations.router)
 app.include_router(arxiv_search.router)
+app.include_router(ai_assistant.router)
 
 # 检测是否在Vercel环境中
 IS_VERCEL = os.getenv("VERCEL", False)

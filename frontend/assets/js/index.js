@@ -85,10 +85,12 @@ function renderPapers(papers) {
                         <a href="/paper/${paper.id}" class="text-decoration-none">
                             ${escapeHtml(paper.title)}
                         </a>
+                        ${paper.domain ? `<span class="badge bg-primary ms-2">${escapeHtml(paper.domain)}</span>` : ''}
                     </h5>
                     <div class="meta">
                         ${paper.authors ? `<span>👤 ${escapeHtml(paper.authors)}</span>` : ''}
                         ${paper.year ? `<span class="ms-3">📅 ${paper.year}</span>` : ''}
+                        ${paper.github_url ? `<span class="ms-3">💻 <a href="${paper.github_url}" target="_blank">GitHub</a></span>` : ''}
                     </div>
                     ${paper.abstract ? `<p class="abstract mt-2">${escapeHtml(paper.abstract)}</p>` : ''}
                     ${paper.tags ? renderTags(paper.tags) : ''}

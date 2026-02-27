@@ -56,10 +56,21 @@ function renderPaperInfo() {
             <div class="col-md-6 mb-2">
                 <strong>年份：</strong> ${currentPaper.year || '未知'}
             </div>
+            ${currentPaper.domain ? `
+                <div class="col-md-6 mb-2">
+                    <strong>研究领域：</strong> <span class="badge bg-primary">${escapeHtml(currentPaper.domain)}</span>
+                </div>
+            ` : ''}
             <div class="col-12 mb-2">
                 <strong>PDF：</strong>
                 ${currentPaper.pdf_path ? `<a href="${currentPaper.pdf_path}" target="_blank">${currentPaper.pdf_path}</a>` : '未设置'}
             </div>
+            ${currentPaper.github_url ? `
+                <div class="col-12 mb-2">
+                    <strong>GitHub：</strong>
+                    <a href="${currentPaper.github_url}" target="_blank">${currentPaper.github_url}</a>
+                </div>
+            ` : ''}
             ${currentPaper.tags ? `
                 <div class="col-12 mb-2">
                     <strong>标签：</strong> ${renderTags(currentPaper.tags)}
@@ -300,4 +311,138 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ============ AI助手功能 ============
+
+let lastAIOutput = '';
+let lastAIType = '';
+
+// 生成AI摘要
+async function generateAISummary() {
+    if (!currentPaper.abstract) {
+        showToast('该论文没有摘要，无法生成', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('aiSummaryBtnText');
+    const spinner = document.getElementById('aiSummarySpinner');
+    const output = document.getElementById('aiOutput');
+    const outputContent = document.getElementById('aiOutputContent');
+
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+    output.classList.add('d-none');
+
+    try {
+        const response = await fetch('/api/ai/summarize', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: currentPaper.abstract,
+                max_length: 200
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || '生成摘要失败');
+        }
+
+        const data = await response.json();
+        lastAIOutput = data.content;
+        lastAIType = 'summary';
+
+        outputContent.innerHTML = `
+            <h6 class="mb-2">📝 AI生成的中文摘要：</h6>
+            <div style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>
+            <div class="mt-2 text-muted small">模型: ${data.model}</div>
+        `;
+        output.classList.remove('d-none');
+
+        showToast('摘要生成成功');
+    } catch (error) {
+        showToast('生成摘要失败: ' + error.message, 'error');
+    } finally {
+        btnText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+}
+
+// 提取创新点
+async function extractInnovations() {
+    if (!currentPaper.abstract) {
+        showToast('该论文没有摘要，无法提取创新点', 'error');
+        return;
+    }
+
+    const btnText = document.getElementById('aiInnovationBtnText');
+    const spinner = document.getElementById('aiInnovationSpinner');
+    const output = document.getElementById('aiOutput');
+    const outputContent = document.getElementById('aiOutputContent');
+
+    btnText.classList.add('d-none');
+    spinner.classList.remove('d-none');
+    output.classList.add('d-none');
+
+    try {
+        const response = await fetch('/api/ai/extract-innovations', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                abstract: currentPaper.abstract,
+                title: currentPaper.title
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || '提取创新点失败');
+        }
+
+        const data = await response.json();
+        lastAIOutput = data.content;
+        lastAIType = 'innovations';
+
+        outputContent.innerHTML = `
+            <h6 class="mb-2">💡 AI提取的创新点：</h6>
+            <div style="white-space: pre-wrap;">${escapeHtml(data.content)}</div>
+            <div class="mt-2 text-muted small">模型: ${data.model}</div>
+        `;
+        output.classList.remove('d-none');
+
+        showToast('创新点提取成功');
+    } catch (error) {
+        showToast('提取创新点失败: ' + error.message, 'error');
+    } finally {
+        btnText.classList.remove('d-none');
+        spinner.classList.add('d-none');
+    }
+}
+
+// 复制AI输出到分析区
+function copyAIOutput() {
+    if (!lastAIOutput) {
+        showToast('没有可复制的内容', 'error');
+        return;
+    }
+
+    const targetField = document.getElementById('innovationPoints');
+    const currentContent = targetField.value.trim();
+
+    if (currentContent) {
+        // 如果已有内容，追加到末尾
+        targetField.value = currentContent + '\n\n' + lastAIOutput;
+    } else {
+        // 如果为空，直接填入
+        targetField.value = lastAIOutput;
+    }
+
+    // 滚动到分析记录区域
+    document.getElementById('innovationPoints').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    showToast('已复制到创新点分析区域');
 }

@@ -31,6 +31,28 @@
             <div id="paperInfo"></div>
         </div>
 
+        <!-- AI助手 -->
+        <div class="detail-section">
+            <h4>🤖 AI助手</h4>
+            <p class="text-muted small mb-3">使用AI快速生成论文摘要和提取创新点</p>
+            <div class="d-flex gap-2 mb-3">
+                <button class="btn btn-outline-primary" onclick="generateAISummary()">
+                    <span id="aiSummaryBtnText">生成中文摘要</span>
+                    <span id="aiSummarySpinner" class="spinner-border spinner-border-sm d-none"></span>
+                </button>
+                <button class="btn btn-outline-success" onclick="extractInnovations()">
+                    <span id="aiInnovationBtnText">提取创新点</span>
+                    <span id="aiInnovationSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                </button>
+            </div>
+            <div id="aiOutput" class="d-none">
+                <div class="alert alert-info">
+                    <div id="aiOutputContent"></div>
+                    <button class="btn btn-sm btn-link float-end" onclick="copyAIOutput()">复制到分析区</button>
+                </div>
+            </div>
+        </div>
+
         <!-- 分析记录 -->
         <div class="detail-section">
             <h4>📊 分析记录</h4>
