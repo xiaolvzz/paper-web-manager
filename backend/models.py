@@ -14,6 +14,9 @@ class PaperBase(BaseModel):
     tags: Optional[str] = Field(None, description="标签，逗号分隔")
     github_url: Optional[str] = Field(None, description="GitHub代码仓库链接")
     domain: Optional[str] = Field(None, description="研究领域（如NLP、CV、RL等）")
+    pdf_storage_path: Optional[str] = Field(None, description="Supabase Storage中的PDF文件路径")
+    pdf_text_content: Optional[str] = Field(None, description="提取的PDF文本内容")
+    arxiv_id: Optional[str] = Field(None, description="arXiv论文ID（如2301.12345）")
 
 
 class PaperCreate(PaperBase):
@@ -31,6 +34,9 @@ class PaperUpdate(BaseModel):
     tags: Optional[str] = None
     github_url: Optional[str] = None
     domain: Optional[str] = None
+    pdf_storage_path: Optional[str] = None
+    pdf_text_content: Optional[str] = None
+    arxiv_id: Optional[str] = None
 
 
 class Paper(PaperBase):
@@ -110,3 +116,39 @@ class RelationWithPapers(Relation):
     """关联关系及关联的论文信息"""
     paper_from: Optional[Paper] = None
     paper_to: Optional[Paper] = None
+
+
+# ========== 对话相关模型 ==========
+
+class ConversationBase(BaseModel):
+    """对话基础模型"""
+    paper_id: int = Field(..., description="关联的论文ID")
+    role: str = Field(..., description="消息角色: user, assistant, system")
+    content: str = Field(..., description="消息内容")
+
+
+class ConversationCreate(ConversationBase):
+    """创建对话记录的请求模型"""
+    pass
+
+
+class Conversation(ConversationBase):
+    """对话完整模型（包含数据库字段）"""
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ChatRequest(BaseModel):
+    """AI对话请求模型"""
+    paper_id: int = Field(..., description="关联的论文ID")
+    user_message: str = Field(..., description="用户消息", min_length=1)
+
+
+class ChatResponse(BaseModel):
+    """AI对话响应模型"""
+    content: str = Field(..., description="AI回复内容")
+    conversation_id: int = Field(..., description="对话记录ID")
+    created_at: datetime = Field(..., description="创建时间")

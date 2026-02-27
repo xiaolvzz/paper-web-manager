@@ -216,3 +216,161 @@ body {
     right: 20px;
     z-index: 9999;
 }
+
+/* ========== AI对话界面样式 ========== */
+.chat-history {
+    max-height: 500px;
+    overflow-y: auto;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.chat-message {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-message.user {
+    align-items: flex-end;
+}
+
+.chat-message.assistant {
+    align-items: flex-start;
+}
+
+.message-bubble {
+    max-width: 80%;
+    padding: 10px 15px;
+    border-radius: 15px;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.chat-message.user .message-bubble {
+    background: #007bff;
+    color: white;
+}
+
+.chat-message.assistant .message-bubble {
+    background: white;
+    border: 1px solid #dee2e6;
+    color: #333;
+}
+
+.message-time {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 5px;
+}
+
+.chat-input-area {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.chat-input-area textarea {
+    flex: 1;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 10px;
+    resize: none;
+    font-family: inherit;
+}
+
+.chat-input-area button {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.chat-input-area button:hover {
+    background: #0056b3;
+}
+
+.chat-input-area button:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+.quick-questions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.quick-questions button {
+    font-size: 0.85rem;
+}
+
+/* 论文内容输入区域 */
+.tab-content {
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    background: white;
+}
+
+.tab-content input[type="file"],
+.tab-content input[type="text"],
+.tab-content textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    margin-bottom: 10px;
+}
+
+.tab-content textarea {
+    resize: vertical;
+}
+
+.tab-content button {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.tab-content button:hover {
+    background: #218838;
+}
+
+.status-indicator {
+    padding: 5px 10px;
+    background: #e9ecef;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.status-indicator.success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

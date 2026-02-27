@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from backend.routers import papers, analysis, relations, arxiv_search, ai_assistant
+from backend.routers import papers, analysis, relations, arxiv_search, ai_assistant, conversations
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -30,6 +30,7 @@ app.include_router(analysis.router)
 app.include_router(relations.router)
 app.include_router(arxiv_search.router)
 app.include_router(ai_assistant.router)
+app.include_router(conversations.router)
 
 # 检测是否在Vercel环境中
 IS_VERCEL = os.getenv("VERCEL", False)
