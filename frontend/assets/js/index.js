@@ -174,10 +174,19 @@ async function addFromPdfUrl() {
             throw new Error('后端返回的数据格式错误：缺少paper字段');
         }
 
-        // 直接添加论文到系统
-        console.log('步骤5: 添加论文到数据库...');
-        const createdPaper = await PapersAPI.create(data.paper);
-        console.log('步骤6: 论文创建成功:', createdPaper);
+        // 映射字段：pdf_url → pdf_path
+        const paperData = {
+            ...data.paper,
+            pdf_path: data.paper.pdf_url || data.paper.pdf_path
+        };
+        delete paperData.pdf_url;  // 移除pdf_url字段，避免混淆
+
+        console.log('步骤5: 映射后的论文数据:', paperData);
+
+        // 添加论文到系统
+        console.log('步骤6: 添加论文到数据库...');
+        const createdPaper = await PapersAPI.create(paperData);
+        console.log('步骤7: 论文创建成功:', createdPaper);
 
         showToast('✓ 论文添加成功！');
 
@@ -187,9 +196,9 @@ async function addFromPdfUrl() {
         modal.hide();
 
         // 重新加载论文列表
-        console.log('步骤7: 重新加载论文列表...');
+        console.log('步骤8: 重新加载论文列表...');
         await loadPapers();
-        console.log('步骤8: 完成！当前论文数量:', currentPapers.length);
+        console.log('步骤9: 完成！当前论文数量:', currentPapers.length);
 
     } catch (error) {
         console.error('❌ 添加失败 - 详细错误:', error);
