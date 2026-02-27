@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>测试添加论文</title>
+</head>
+<body>
+    <h1>测试添加论文API</h1>
+    <div id="results"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+
+        async function runTests() {
+            resultsDiv.innerHTML = '<h2>开始测试...</h2>';
+
+            // 测试1: 检查/api/health
+            try {
+                resultsDiv.innerHTML += '<h3>测试1: /api/health</h3>';
+                const healthRes = await fetch('/api/health');
+                const healthData = await healthRes.json();
+                resultsDiv.innerHTML += `<pre>${JSON.stringify(healthData, null, 2)}</pre>`;
+            } catch (e) {
+                resultsDiv.innerHTML += `<p style="color:red;">失败: ${e.message}</p>`;
+            }
+
+            // 测试2: 检查/api/papers列表
+            try {
+                resultsDiv.innerHTML += '<h3>测试2: GET /api/papers</h3>';
+                const papersRes = await fetch('/api/papers/');
+                const papersData = await papersRes.json();
+                resultsDiv.innerHTML += `<pre>返回${papersData.length}篇论文</pre>`;
+            } catch (e) {
+                resultsDiv.innerHTML += `<p style="color:red;">失败: ${e.message}</p>`;
+            }
+
+            // 测试3: 从arXiv获取论文信息
+            try {
+                resultsDiv.innerHTML += '<h3>测试3: POST /api/arxiv/from-pdf-url</h3>';
+                const arxivRes = await fetch('/api/arxiv/from-pdf-url?pdf_url=https://arxiv.org/pdf/2602.06521.pdf', {
+                    method: 'POST'
+                });
+
+                resultsDiv.innerHTML += `<p>状态码: ${arxivRes.status}</p>`;
+
+                if (arxivRes.ok) {
+                    const arxivData = await arxivRes.json();
+                    resultsDiv.innerHTML += `<pre>${JSON.stringify(arxivData, null, 2)}</pre>`;
+                } else {
+                    const errorText = await arxivRes.text();
+                    resultsDiv.innerHTML += `<p style="color:red;">错误: ${errorText}</p>`;
+                }
+            } catch (e) {
+                resultsDiv.innerHTML += `<p style="color:red;">失败: ${e.message}</p>`;
+            }
+
+            // 测试4: 创建论文
+            try {
+                resultsDiv.innerHTML += '<h3>测试4: POST /api/papers/</h3>';
+                const paperData = {
+                    title: "测试论文" + Date.now(),
+                    authors: "测试作者",
+                    year: 2024,
+                    pdf_path: "https://test.pdf",
+                    abstract: "这是一个测试"
+                };
+
+                resultsDiv.innerHTML += `<p>发送数据:</p><pre>${JSON.stringify(paperData, null, 2)}</pre>`;
+
+                const createRes = await fetch('/api/papers/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(paperData)
+                });
+
+                resultsDiv.innerHTML += `<p>状态码: ${createRes.status}</p>`;
+
+                if (createRes.ok) {
+                    const created = await createRes.json();
+                    resultsDiv.innerHTML += `<pre style="color:green;">${JSON.stringify(created, null, 2)}</pre>`;
+                } else {
+                    const errorText = await createRes.text();
+                    resultsDiv.innerHTML += `<p style="color:red;">错误: ${errorText}</p>`;
+                }
+            } catch (e) {
+                resultsDiv.innerHTML += `<p style="color:red;">失败: ${e.message}</p>`;
+            }
+
+            resultsDiv.innerHTML += '<h2>测试完成</h2>';
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
