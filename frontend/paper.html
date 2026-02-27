@@ -34,7 +34,35 @@
                 </div>
             </div>
             <div id="paperInfo"></div>
+
+            <!-- AI自动分析结果展示 -->
+            <div id="autoAnalysisDisplay" class="mt-4" style="display: none;">
+                <div class="alert alert-info">
+                    <h5>📊 AI自动分析</h5>
+                    <div id="analysisContent"></div>
+                    <button class="btn btn-sm btn-success mt-2" onclick="saveAutoAnalysis()">保存到数据库</button>
+                    <button class="btn btn-sm btn-secondary mt-2" onclick="editAnalysis()">编辑</button>
+                </div>
+            </div>
         </div>
+
+        <!-- 主Tab切换：论文讨论 vs 源码信息 -->
+        <ul class="nav nav-tabs nav-fill mb-4" id="mainTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="discussion-main-tab" data-bs-toggle="tab" data-bs-target="#discussionTab" type="button">
+                    💬 论文讨论
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="code-main-tab" data-bs-toggle="tab" data-bs-target="#codeTab" type="button">
+                    💻 源码信息
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <!-- Tab 1: 论文讨论 -->
+            <div class="tab-pane fade show active" id="discussionTab" role="tabpanel">
 
         <!-- 论文内容输入 -->
         <div class="detail-section" id="contentInputSection">
@@ -200,6 +228,79 @@
             </div>
             <div id="relationsList"></div>
         </div>
+
+            </div>
+            <!-- End Tab 1: 论文讨论 -->
+
+            <!-- Tab 2: 源码信息 -->
+            <div class="tab-pane fade" id="codeTab" role="tabpanel">
+                <div class="detail-section">
+                    <h4>💻 源码信息</h4>
+
+                    <!-- 源码链接 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">源码链接</label>
+                        <div class="input-group">
+                            <input type="url" class="form-control" id="sourceCodeUrl" placeholder="https://github.com/...">
+                            <button class="btn btn-primary" onclick="openSourceCode()">
+                                🔗 打开链接
+                            </button>
+                        </div>
+                        <small class="text-muted">GitHub、GitLab等代码仓库链接</small>
+                    </div>
+
+                    <!-- 源码概览（如果有链接） -->
+                    <div id="codeOverview" style="display: none;">
+                        <div class="alert alert-success">
+                            <h5>📦 代码仓库信息</h5>
+                            <div id="codeRepoInfo">加载中...</div>
+                        </div>
+
+                        <!-- README预览区域 -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">README 预览</label>
+                            <div id="readmePreview" class="border rounded p-3" style="max-height: 500px; overflow-y: auto; background: #f8f9fa;">
+                                <p class="text-muted">README内容将显示在这里</p>
+                            </div>
+                        </div>
+
+                        <!-- 使用说明 -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">使用说明</label>
+                            <textarea class="form-control" id="usageNotes" rows="6" placeholder="记录代码的安装、运行、使用方法等..."></textarea>
+                        </div>
+
+                        <!-- 代码特点 -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">代码特点</label>
+                            <textarea class="form-control" id="codeFeatures" rows="4" placeholder="记录代码的特点、优势、注意事项等..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- 无源码提示 -->
+                    <div id="noCodeHint">
+                        <div class="alert alert-secondary">
+                            <h5>💡 没有找到源码？</h5>
+                            <p class="mb-0">可以尝试：</p>
+                            <ul class="mb-2">
+                                <li>在论文PDF中搜索"github"、"code"等关键词</li>
+                                <li>访问作者主页或论文官网</li>
+                                <li>在GitHub搜索论文标题</li>
+                                <li>向AI助手询问"这篇论文有源码吗？"</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success" onclick="saveCodeInfo()">
+                        <span id="saveCodeBtnText">保存源码信息</span>
+                        <span id="saveCodeSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                    </button>
+                </div>
+            </div>
+            <!-- End Tab 2: 源码信息 -->
+
+        </div>
+        <!-- End Main Tab Content -->
     </div>
 
     <!-- 添加关联关系Modal -->

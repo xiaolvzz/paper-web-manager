@@ -871,3 +871,320 @@ function viewPDF() {
 }
 
 // HTML转义函数已在文件开头定义，无需重复
+
+// ========== 自动分析功能 ==========
+
+/**
+ * 触发AI自动分析
+ */
+async function triggerAutoAnalysis() {
+    if (!currentPaper) {
+        showToast('论文信息未加载', 'error');
+        return;
+    }
+
+    // 显示加载状态
+    const analysisDisplay = document.getElementById('autoAnalysisDisplay');
+    const analysisContent = document.getElementById('analysisContent');
+
+    analysisDisplay.style.display = 'block';
+    analysisContent.innerHTML = '<div class="spinner-border spinner-border-sm"></div> AI正在分析论文，请稍候...';
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaper.id}/auto-analyze?update_db=false`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('分析失败');
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.analysis) {
+            const analysis = data.analysis;
+
+            // 显示分析结果
+            let html = '';
+
+            // 主要工作
+            html += `<div class="mb-3"><strong>📝 主要工作：</strong><p>${escapeHtml(analysis.main_work)}</p></div>`;
+
+            // 创新点
+            if (analysis.innovations && analysis.innovations.length > 0) {
+                html += '<div class="mb-3"><strong>💡 创新点：</strong><ul>';
+                analysis.innovations.forEach(inn => {
+                    html += `<li>${escapeHtml(inn)}</li>`;
+                });
+                html += '</ul></div>';
+            }
+
+            // 标签
+            if (analysis.structured_tags && analysis.structured_tags.length > 0) {
+                html += '<div class="mb-3"><strong>🏷️ 标签：</strong><br>';
+                analysis.structured_tags.forEach(tag => {
+                    html += `<span class="badge bg-primary me-1">${escapeHtml(tag)}</span>`;
+                });
+                html += '</div>';
+            }
+
+            // 源码链接
+            if (analysis.source_code_url) {
+                html += `<div class="mb-3"><strong>💻 源码：</strong><br>
+                    <a href="${escapeHtml(analysis.source_code_url)}" target="_blank">${escapeHtml(analysis.source_code_url)}</a>
+                </div>`;
+            }
+
+            analysisContent.innerHTML = html;
+
+            // 存储分析结果供后续使用
+            window.currentAnalysis = analysis;
+
+        } else {
+            throw new Error(data.message || '分析失败');
+        }
+    } catch (error) {
+        analysisContent.innerHTML = `<div class="alert alert-danger">分析失败: ${error.message}</div>`;
+    }
+}
+
+/**
+ * 保存AI分析结果到数据库
+ */
+async function saveAutoAnalysis() {
+    if (!currentPaper) return;
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaper.id}/auto-analyze?update_db=true`, {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('保存失败');
+        }
+
+        showToast('分析结果已保存', 'success');
+
+        // 刷新论文信息
+        await loadPaperDetails(currentPaper.id);
+
+        // 隐藏分析面板
+        document.getElementById('autoAnalysisDisplay').style.display = 'none';
+    } catch (error) {
+        showToast('保存失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 编辑分析结果
+ */
+function editAnalysis() {
+    if (!window.currentAnalysis) return;
+
+    const analysis = window.currentAnalysis;
+
+    // 填充到表单
+    if (analysis.main_work) {
+        document.getElementById('innovationPoints').value = analysis.main_work + '\n\n创新点：\n' +
+            (analysis.innovations || []).map((item, i) => `${i+1}. ${item}`).join('\n');
+    }
+
+    if (analysis.source_code_url) {
+        document.getElementById('sourceCodeUrl').value = analysis.source_code_url;
+    }
+
+    // 切换到讨论Tab
+    const discussionTab = document.getElementById('discussion-main-tab');
+    discussionTab.click();
+
+    // 滚动到分析区域
+    document.getElementById('innovationPoints').scrollIntoView({ behavior: 'smooth' });
+
+    showToast('分析结果已填充到表单，请编辑后保存', 'info');
+}
+
+// ========== 源码信息功能 ==========
+
+/**
+ * 打开源码链接
+ */
+function openSourceCode() {
+    const url = document.getElementById('sourceCodeUrl').value.trim();
+    if (!url) {
+        showToast('请先输入源码链接', 'error');
+        return;
+    }
+
+    window.open(url, '_blank');
+}
+
+/**
+ * 加载源码信息
+ */
+function loadCodeInfo() {
+    if (!currentPaper) return;
+
+    const sourceCodeUrl = document.getElementById('sourceCodeUrl');
+    const codeOverview = document.getElementById('codeOverview');
+    const noCodeHint = document.getElementById('noCodeHint');
+
+    if (currentPaper.source_code_url) {
+        sourceCodeUrl.value = currentPaper.source_code_url;
+        codeOverview.style.display = 'block';
+        noCodeHint.style.display = 'none';
+
+        // 如果是GitHub链接，尝试获取仓库信息
+        if (currentPaper.source_code_url.includes('github.com')) {
+            fetchGitHubRepoInfo(currentPaper.source_code_url);
+        }
+    } else {
+        sourceCodeUrl.value = '';
+        codeOverview.style.display = 'none';
+        noCodeHint.style.display = 'block';
+    }
+}
+
+/**
+ * 获取GitHub仓库信息
+ */
+async function fetchGitHubRepoInfo(githubUrl) {
+    try {
+        // 从URL提取owner和repo
+        const match = githubUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+        if (!match) return;
+
+        const [, owner, repo] = match;
+        const cleanRepo = repo.replace(/\.git$/, '');
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${cleanRepo}`);
+        if (!response.ok) return;
+
+        const repoData = await response.json();
+
+        // 显示仓库信息
+        const codeRepoInfo = document.getElementById('codeRepoInfo');
+        codeRepoInfo.innerHTML = `
+            <p><strong>仓库名:</strong> ${escapeHtml(repoData.name)}</p>
+            <p><strong>描述:</strong> ${escapeHtml(repoData.description || '无')}</p>
+            <p><strong>⭐ Stars:</strong> ${repoData.stargazers_count} |
+               <strong>🍴 Forks:</strong> ${repoData.forks_count}</p>
+            <p><strong>语言:</strong> ${escapeHtml(repoData.language || '未知')}</p>
+            <p><strong>最后更新:</strong> ${new Date(repoData.updated_at).toLocaleDateString('zh-CN')}</p>
+        `;
+
+        // 获取README
+        fetchGitHubReadme(owner, cleanRepo);
+
+    } catch (error) {
+        console.error('获取GitHub信息失败:', error);
+    }
+}
+
+/**
+ * 获取GitHub README
+ */
+async function fetchGitHubReadme(owner, repo) {
+    try {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, {
+            headers: {
+                'Accept': 'application/vnd.github.v3.raw'
+            }
+        });
+
+        if (!response.ok) return;
+
+        const readme = await response.text();
+        const readmePreview = document.getElementById('readmePreview');
+
+        // 简单的Markdown渲染（只处理标题和链接）
+        let html = escapeHtml(readme);
+        html = html.replace(/^### (.+)$/gm, '<h5>$1</h5>');
+        html = html.replace(/^## (.+)$/gm, '<h4>$1</h4>');
+        html = html.replace(/^# (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/\n/g, '<br>');
+
+        readmePreview.innerHTML = html;
+
+    } catch (error) {
+        console.error('获取README失败:', error);
+    }
+}
+
+/**
+ * 保存源码信息
+ */
+async function saveCodeInfo() {
+    if (!currentPaper) return;
+
+    const sourceCodeUrl = document.getElementById('sourceCodeUrl').value.trim();
+    const usageNotes = document.getElementById('usageNotes').value.trim();
+    const codeFeatures = document.getElementById('codeFeatures').value.trim();
+
+    showLoading('saveCodeBtnText', 'saveCodeSpinner', '保存中...');
+
+    try {
+        // 更新论文的source_code_url
+        const updateData = {
+            source_code_url: sourceCodeUrl || null
+        };
+
+        const response = await fetch(`/api/papers/${currentPaper.id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+
+        if (!response.ok) {
+            throw new Error('更新失败');
+        }
+
+        // 保存使用说明到个人备注（暂时方案）
+        if (usageNotes || codeFeatures) {
+            const personalNotes = document.getElementById('personalNotes');
+            let notes = personalNotes.value || '';
+
+            if (usageNotes) {
+                notes += '\n\n## 代码使用说明\n' + usageNotes;
+            }
+            if (codeFeatures) {
+                notes += '\n\n## 代码特点\n' + codeFeatures;
+            }
+
+            personalNotes.value = notes.trim();
+        }
+
+        showSuccess('saveCodeBtnText', 'saveCodeSpinner', '保存成功', '保存源码信息');
+        showToast('源码信息已保存', 'success');
+
+        // 刷新数据
+        currentPaper.source_code_url = sourceCodeUrl;
+        loadCodeInfo();
+
+    } catch (error) {
+        showError('saveCodeBtnText', 'saveCodeSpinner', '保存失败', '保存源码信息');
+        showToast('保存失败: ' + error.message, 'error');
+    }
+}
+
+// ========== 页面加载时初始化 ==========
+
+// 修改现有的loadPaperDetails函数，添加自动分析和源码信息加载
+const originalLoadPaperDetails = loadPaperDetails;
+loadPaperDetails = async function(paperId) {
+    await originalLoadPaperDetails(paperId);
+
+    // 加载源码信息
+    loadCodeInfo();
+
+    // 如果论文未分析且有内容，自动触发分析
+    if (currentPaper && !currentPaper.auto_analyzed &&
+        (currentPaper.abstract || currentPaper.pdf_text_content)) {
+        setTimeout(() => {
+            if (confirm('检测到论文还未进行AI分析，是否现在进行自动分析？')) {
+                triggerAutoAnalysis();
+            }
+        }, 1000);
+    }
+};
