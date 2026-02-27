@@ -128,6 +128,10 @@
             user-select: text;
             -webkit-user-select: text;
             pointer-events: auto;
+            /* 精确字体渲染 */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
 
         .textLayer span,
@@ -137,6 +141,10 @@
             white-space: pre;
             cursor: text;
             transform-origin: 0% 0%;
+            /* 精确定位和尺寸 */
+            line-height: 1;
+            letter-spacing: 0;
+            word-spacing: 0;
         }
 
         .textLayer ::selection {
@@ -426,20 +434,28 @@
                 // 获取设备像素比（处理高DPI屏幕）
                 const outputScale = window.devicePixelRatio || 1;
 
-                // 计算viewport（CSS尺寸）
+                // 计算viewport（CSS尺寸）- 保持高精度
                 const viewport = page.getViewport({ scale: currentScale });
 
-                // 设置容器的CSS尺寸
-                container.style.width = Math.floor(viewport.width) + 'px';
-                container.style.height = Math.floor(viewport.height) + 'px';
+                // 使用更精确的尺寸（不取整，保留小数）
+                const cssWidth = viewport.width;
+                const cssHeight = viewport.height;
 
-                // 设置canvas的CSS显示尺寸
-                canvas.style.width = Math.floor(viewport.width) + 'px';
-                canvas.style.height = Math.floor(viewport.height) + 'px';
+                // 设置容器的CSS尺寸（精确到0.01px）
+                container.style.width = cssWidth.toFixed(2) + 'px';
+                container.style.height = cssHeight.toFixed(2) + 'px';
 
-                // 设置canvas的实际分辨率（考虑设备像素比）
-                canvas.width = Math.floor(viewport.width * outputScale);
-                canvas.height = Math.floor(viewport.height * outputScale);
+                // 设置canvas的CSS显示尺寸（与容器完全一致）
+                canvas.style.width = cssWidth.toFixed(2) + 'px';
+                canvas.style.height = cssHeight.toFixed(2) + 'px';
+
+                // 设置canvas的实际分辨率（考虑设备像素比，向上取整避免模糊）
+                canvas.width = Math.ceil(cssWidth * outputScale);
+                canvas.height = Math.ceil(cssHeight * outputScale);
+
+                // 清空并重置context
+                ctx.save();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 // 缩放画布context以匹配设备像素比
                 ctx.scale(outputScale, outputScale);
@@ -450,31 +466,34 @@
                     viewport: viewport
                 };
                 await page.render(renderContext).promise;
+                ctx.restore();
 
                 // 渲染文本层（使文字可选）
                 const textContent = await page.getTextContent();
 
                 // 清空旧的文本层
                 textLayerDiv.innerHTML = '';
+                textLayerDiv.style.transform = '';
 
-                // 设置text layer的CSS尺寸（和canvas的CSS尺寸一致）
-                textLayerDiv.style.width = Math.floor(viewport.width) + 'px';
-                textLayerDiv.style.height = Math.floor(viewport.height) + 'px';
+                // 设置text layer的CSS尺寸（精确匹配viewport）
+                textLayerDiv.style.width = cssWidth.toFixed(2) + 'px';
+                textLayerDiv.style.height = cssHeight.toFixed(2) + 'px';
 
-                // 使用PDF.js renderTextLayer
+                // 使用PDF.js renderTextLayer（不使用enhanceTextSelection以获得更精确的选择）
                 try {
                     const textLayerRender = pdfjsLib.renderTextLayer({
                         textContentSource: textContent,
                         container: textLayerDiv,
                         viewport: viewport,
-                        enhanceTextSelection: true
+                        enhanceTextSelection: false  // 禁用增强选择以提高精度
                     });
                     await textLayerRender.promise;
                     console.log('✅ Text layer rendered:', {
-                        cssSize: `${Math.floor(viewport.width)}x${Math.floor(viewport.height)}`,
+                        cssSize: `${cssWidth.toFixed(2)}x${cssHeight.toFixed(2)}`,
                         canvasSize: `${canvas.width}x${canvas.height}`,
                         scale: currentScale,
-                        dpr: outputScale
+                        dpr: outputScale,
+                        precision: 'high'
                     });
                 } catch (error) {
                     console.error('❌ Text layer rendering error:', error);
