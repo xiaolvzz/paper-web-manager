@@ -180,6 +180,165 @@ class GroqProvider(AIProvider):
         return "Groq"
 
 
+class GeminiProvider(AIProvider):
+    """Google Gemini - 完全免费且性能优秀"""
+
+    API_BASE = "https://generativelanguage.googleapis.com/v1beta"
+
+    def __init__(self, api_key: str, model: str = "gemini-2.0-flash-exp"):
+        """
+        支持的模型：
+        - gemini-2.0-flash-exp: 最新实验版，完全免费
+        - gemini-1.5-flash: 快速版，$0.075/M
+        - gemini-1.5-pro: 旗舰版，$1.25/M
+        """
+        super().__init__(api_key, model)
+
+    async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
+        # Gemini API使用不同的消息格式，需要转换
+        contents = []
+        system_instruction = None
+
+        for msg in messages:
+            if msg["role"] == "system":
+                system_instruction = msg["content"]
+            else:
+                # Gemini使用 "user" 和 "model" 而不是 "user" 和 "assistant"
+                role = "user" if msg["role"] == "user" else "model"
+                contents.append({
+                    "role": role,
+                    "parts": [{"text": msg["content"]}]
+                })
+
+        request_body = {
+            "contents": contents,
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            }
+        }
+
+        if system_instruction:
+            request_body["systemInstruction"] = {
+                "parts": [{"text": system_instruction}]
+            }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{self.API_BASE}/models/{self.model}:generateContent?key={self.api_key}",
+                headers={"Content-Type": "application/json"},
+                json=request_body
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"Gemini API错误: {response.text}")
+
+            result = response.json()
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+
+    def get_name(self) -> str:
+        return "Google Gemini"
+
+
+class ClaudeProvider(AIProvider):
+    """Anthropic Claude - 推理能力极强"""
+
+    API_BASE = "https://api.anthropic.com/v1"
+
+    def __init__(self, api_key: str, model: str = "claude-3-5-haiku-20241022"):
+        """
+        支持的模型：
+        - claude-3-5-haiku-20241022: 快速版，$0.8/M input
+        - claude-3-5-sonnet-20241022: 旗舰版，$3/M input
+        - claude-3-opus-20240229: 最强版，$15/M input
+        """
+        super().__init__(api_key, model)
+
+    async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
+        # Claude API需要分离system消息
+        system_message = None
+        user_messages = []
+
+        for msg in messages:
+            if msg["role"] == "system":
+                system_message = msg["content"]
+            else:
+                user_messages.append({
+                    "role": msg["role"],
+                    "content": msg["content"]
+                })
+
+        request_body = {
+            "model": self.model,
+            "messages": user_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        if system_message:
+            request_body["system"] = system_message
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{self.API_BASE}/messages",
+                headers={
+                    "x-api-key": self.api_key,
+                    "anthropic-version": "2023-06-01",
+                    "Content-Type": "application/json"
+                },
+                json=request_body
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"Claude API错误: {response.text}")
+
+            result = response.json()
+            return result["content"][0]["text"]
+
+    def get_name(self) -> str:
+        return "Anthropic Claude"
+
+
+class OpenAIProvider(AIProvider):
+    """OpenAI GPT - 业界标杆"""
+
+    API_BASE = "https://api.openai.com/v1"
+
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini"):
+        """
+        支持的模型：
+        - gpt-4o-mini: 快速廉价，$0.15/M input
+        - gpt-4o: 旗舰版，$2.5/M input
+        - gpt-4-turbo: 旧版旗舰，$10/M input
+        """
+        super().__init__(api_key, model)
+
+    async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                f"{self.API_BASE}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.model,
+                    "messages": messages,
+                    "temperature": temperature,
+                    "max_tokens": max_tokens
+                }
+            )
+
+            if response.status_code != 200:
+                raise Exception(f"OpenAI API错误: {response.text}")
+
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+
+    def get_name(self) -> str:
+        return "OpenAI GPT"
+
+
 class AIManager:
     """AI服务管理器 - 自动选择可用的provider"""
 
@@ -190,34 +349,62 @@ class AIManager:
     def _initialize_provider(self):
         """
         按优先级初始化AI提供商：
-        1. 智谱AI GLM-4-Flash (完全免费！)
-        2. DeepSeek (极低成本)
-        3. 通义千问 Qwen-Turbo (廉价)
-        4. Groq (备选，免费但可能被限制)
+        1. Gemini 2.0 Flash (完全免费，性能强)
+        2. 智谱AI GLM-4-Flash (完全免费，国内访问)
+        3. DeepSeek (极低成本)
+        4. 通义千问 (廉价)
+        5. Claude (推理强但贵)
+        6. OpenAI GPT (贵)
+        7. Groq (备选)
         """
-        # 1. 优先使用智谱AI GLM-4-Flash (完全免费！)
-        zhipu_key = os.getenv("ZHIPU_API_KEY")
-        if zhipu_key:
-            self.provider = ZhipuAIProvider(zhipu_key, model="glm-4-flash")
-            print("✓ 使用 智谱AI GLM-4-Flash (完全免费)")
+        # 1. 优先Gemini 2.0 Flash (完全免费，性能最强)
+        gemini_key = os.getenv("GEMINI_API_KEY")
+        gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
+        if gemini_key:
+            self.provider = GeminiProvider(gemini_key, model=gemini_model)
+            print(f"✓ 使用 Google Gemini {gemini_model} (完全免费)")
             return
 
-        # 2. 尝试DeepSeek (极低成本)
+        # 2. 智谱AI GLM-4-Flash (完全免费，国内访问)
+        zhipu_key = os.getenv("ZHIPU_API_KEY")
+        zhipu_model = os.getenv("ZHIPU_MODEL", "glm-4-flash")
+        if zhipu_key:
+            self.provider = ZhipuAIProvider(zhipu_key, model=zhipu_model)
+            print(f"✓ 使用 智谱AI {zhipu_model} (完全免费)")
+            return
+
+        # 3. DeepSeek (极低成本)
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
         if deepseek_key:
             self.provider = DeepSeekProvider(deepseek_key)
             print("✓ 使用 DeepSeek-V3 (极低成本)")
             return
 
-        # 3. 尝试通义千问
+        # 4. 通义千问
         qwen_key = os.getenv("QWEN_API_KEY")
-        qwen_model = os.getenv("QWEN_MODEL", "qwen-turbo")  # 支持自定义模型
+        qwen_model = os.getenv("QWEN_MODEL", "qwen-turbo")
         if qwen_key:
             self.provider = QwenProvider(qwen_key, model=qwen_model)
             print(f"✓ 使用 通义千问 {qwen_model}")
             return
 
-        # 4. 尝试Groq（备选）
+        # 5. Claude (推理能力强，但需要付费)
+        claude_key = os.getenv("CLAUDE_API_KEY")
+        claude_model = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
+        if claude_key:
+            self.provider = ClaudeProvider(claude_key, model=claude_model)
+            print(f"✓ 使用 Anthropic Claude {claude_model}")
+            return
+
+        # 6. OpenAI GPT (贵，但性能稳定)
+        openai_key = os.getenv("OPENAI_API_KEY")
+        openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        if openai_key:
+            self.provider = OpenAIProvider(openai_key, model=openai_model)
+            print(f"✓ 使用 OpenAI {openai_model}")
+            return
+
+        # 7. Groq（备选，免费但可能被限）
         groq_key = os.getenv("GROQ_API_KEY")
         if groq_key:
             self.provider = GroqProvider(groq_key)
