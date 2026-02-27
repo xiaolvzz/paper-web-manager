@@ -1,6 +1,7 @@
 """论文管理API"""
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
+from fastapi.responses import Response
 from pydantic import BaseModel
 from supabase import Client
 from backend.database import get_db
@@ -11,6 +12,7 @@ from backend.utils.ai_providers import ai_manager
 from datetime import datetime
 import json
 import re
+import httpx
 
 router = APIRouter(prefix="/papers", tags=["papers"])
 
@@ -605,3 +607,53 @@ async def debug_paper(paper_id: int, db: Client = Depends(get_db)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"调试失败: {str(e)}")
+
+
+@router.get("/{paper_id}/pdf-proxy")
+async def pdf_proxy(paper_id: int, db: Client = Depends(get_db)):
+    """
+    PDF代理端点 - 解决CORS跨域问题
+    用于代理外部PDF URL（如arXiv链接）
+    """
+    try:
+        # 获取论文信息
+        response = db.table("papers").select("pdf_path, pdf_storage_path, title").eq("id", paper_id).execute()
+
+        if not response.data:
+            raise HTTPException(status_code=404, detail="论文不存在")
+
+        paper = response.data[0]
+        pdf_url = paper.get("pdf_path") or paper.get("pdf_storage_path")
+
+        if not pdf_url:
+            raise HTTPException(status_code=404, detail="该论文没有PDF文件")
+
+        # 如果是外部URL，下载并返回
+        if pdf_url.startswith("http://") or pdf_url.startswith("https://"):
+            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
+                pdf_response = await client.get(pdf_url)
+
+                if pdf_response.status_code != 200:
+                    raise HTTPException(
+                        status_code=502,
+                        detail=f"无法下载PDF: HTTP {pdf_response.status_code}"
+                    )
+
+                # 返回PDF内容
+                return Response(
+                    content=pdf_response.content,
+                    media_type="application/pdf",
+                    headers={
+                        "Content-Disposition": f'inline; filename="{paper.get("title", "paper")}.pdf"',
+                        "Access-Control-Allow-Origin": "*"
+                    }
+                )
+        else:
+            # 如果是Supabase Storage路径，需要生成下载URL
+            # TODO: 实现Supabase Storage下载逻辑
+            raise HTTPException(status_code=501, detail="Supabase Storage PDF暂不支持")
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"PDF代理失败: {str(e)}")

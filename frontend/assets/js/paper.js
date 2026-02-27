@@ -901,8 +901,18 @@ function viewPDF() {
         return;
     }
 
+    // 检测是否为外部URL（需要使用代理）
+    let finalPdfUrl;
+    if (pdfPath.startsWith('http://') || pdfPath.startsWith('https://')) {
+        // 使用后端代理端点避免CORS问题
+        finalPdfUrl = `/api/papers/${currentPaper.id}/pdf-proxy`;
+    } else {
+        // 本地路径或Supabase Storage路径
+        finalPdfUrl = pdfPath;
+    }
+
     // 构建PDF查看器URL
-    const pdfUrl = encodeURIComponent(pdfPath);
+    const pdfUrl = encodeURIComponent(finalPdfUrl);
     const title = encodeURIComponent(currentPaper.title);
     const viewerUrl = `/pdf-viewer?url=${pdfUrl}&title=${title}&paper_id=${currentPaper.id}`;
 
