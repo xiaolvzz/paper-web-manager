@@ -1,12 +1,11 @@
-"""AI助手路由 - 使用Groq API提供论文摘要和分析功能"""
+"""AI助手路由 - 支持多个AI提供商"""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-import os
-import httpx
 import json
 from typing import Optional, List
 
 from backend.database import get_supabase_client
+from backend.utils.ai_providers import ai_manager
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
@@ -34,13 +33,12 @@ async def summarize_text(request: SummarizeRequest):
     """
     生成论文摘要
 
-    使用Groq的快速LLM生成中文摘要
+    支持多个AI提供商（DeepSeek, 智谱AI, 通义千问, Groq等）
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    if not ai_manager.is_configured():
         raise HTTPException(
             status_code=500,
-            detail="AI服务未配置。请联系管理员配置GROQ_API_KEY环境变量。"
+            detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
 
     # 构建prompt
@@ -56,50 +54,24 @@ async def summarize_text(request: SummarizeRequest):
 4. 使用简洁的学术语言"""
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.2-90b-text-preview",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位专业的学术论文助手，擅长提炼论文核心内容和创新点。"
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "temperature": 0.7,
-                    "max_tokens": 512
-                }
-            )
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一位专业的学术论文助手，擅长提炼论文核心内容和创新点。"
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
 
-            if response.status_code != 200:
-                error_detail = response.text
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI API调用失败: {error_detail}"
-                )
+        summary = await ai_manager.chat(messages, temperature=0.7, max_tokens=512)
 
-            result = response.json()
-            summary = result["choices"][0]["message"]["content"]
-
-            return AIResponse(
-                content=summary,
-                model="llama-3.2-90b-text-preview"
-            )
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="AI服务超时，请稍后重试"
+        return AIResponse(
+            content=summary,
+            model=f"{ai_manager.get_provider_name()} - {ai_manager.get_model_name()}"
         )
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -114,11 +86,10 @@ async def extract_innovations(request: InnovationRequest):
 
     分析论文摘要，提取主要创新点和贡献
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    if not ai_manager.is_configured():
         raise HTTPException(
             status_code=500,
-            detail="AI服务未配置。请联系管理员配置GROQ_API_KEY环境变量。"
+            detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
 
     # 构建prompt
@@ -135,50 +106,24 @@ async def extract_innovations(request: InnovationRequest):
 4. 突出技术贡献和实际价值"""
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.2-90b-text-preview",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位专业的学术论文分析师，擅长识别和总结论文的核心创新点。"
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "temperature": 0.5,
-                    "max_tokens": 512
-                }
-            )
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一位专业的学术论文分析师，擅长识别和总结论文的核心创新点。"
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
 
-            if response.status_code != 200:
-                error_detail = response.text
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI API调用失败: {error_detail}"
-                )
+        innovations = await ai_manager.chat(messages, temperature=0.5, max_tokens=512)
 
-            result = response.json()
-            innovations = result["choices"][0]["message"]["content"]
-
-            return AIResponse(
-                content=innovations,
-                model="llama-3.2-90b-text-preview"
-            )
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="AI服务超时，请稍后重试"
+        return AIResponse(
+            content=innovations,
+            model=f"{ai_manager.get_provider_name()} - {ai_manager.get_model_name()}"
         )
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -189,12 +134,11 @@ async def extract_innovations(request: InnovationRequest):
 @router.get("/health")
 async def ai_health():
     """AI服务健康检查"""
-    api_key = os.getenv("GROQ_API_KEY")
     return {
-        "status": "healthy" if api_key else "not_configured",
-        "provider": "Groq",
-        "model": "llama-3.2-90b-text-preview",
-        "configured": bool(api_key)
+        "status": "healthy" if ai_manager.is_configured() else "not_configured",
+        "provider": ai_manager.get_provider_name(),
+        "model": ai_manager.get_model_name(),
+        "configured": ai_manager.is_configured()
     }
 
 
@@ -223,11 +167,10 @@ async def analyze_paper(request: AnalyzePaperRequest):
     - 使用方法
     - 源码链接
     """
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+    if not ai_manager.is_configured():
         raise HTTPException(
             status_code=500,
-            detail="AI服务未配置。请联系管理员配置GROQ_API_KEY环境变量。"
+            detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
 
     # 获取论文信息
@@ -271,69 +214,43 @@ async def analyze_paper(request: AnalyzePaperRequest):
 5. 必须返回有效的JSON格式"""
 
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.2-90b-text-preview",
-                    "messages": [
-                        {
-                            "role": "system",
-                            "content": "你是一位专业的学术论文分析师，擅长提取论文的关键信息。请严格按照JSON格式返回结果。"
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 2048
-                }
+        messages = [
+            {
+                "role": "system",
+                "content": "你是一位专业的学术论文分析师，擅长提取论文的关键信息。请严格按照JSON格式返回结果。"
+            },
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+
+        ai_output = await ai_manager.chat(messages, temperature=0.3, max_tokens=2048)
+
+        # 尝试解析JSON
+        try:
+            # 提取JSON部分（AI可能会在JSON前后加说明文字）
+            json_start = ai_output.find('{')
+            json_end = ai_output.rfind('}') + 1
+            json_str = ai_output[json_start:json_end]
+
+            analysis_data = json.loads(json_str)
+
+            return AnalyzePaperResponse(
+                framework=analysis_data.get("framework", "暂无框架描述"),
+                innovations=analysis_data.get("innovations", ["暂无创新点"]),
+                methods=analysis_data.get("methods", ["暂无方法信息"]),
+                source_code=analysis_data.get("source_code"),
+                has_code=analysis_data.get("has_code", False)
             )
 
-            if response.status_code != 200:
-                error_detail = response.text
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI API调用失败: {error_detail}"
-                )
+        except json.JSONDecodeError:
+            # 如果JSON解析失败，返回默认值
+            raise HTTPException(
+                status_code=500,
+                detail="AI返回格式错误，请重试"
+            )
 
-            result = response.json()
-            ai_output = result["choices"][0]["message"]["content"]
-
-            # 尝试解析JSON
-            try:
-                # 提取JSON部分（AI可能会在JSON前后加说明文字）
-                json_start = ai_output.find('{')
-                json_end = ai_output.rfind('}') + 1
-                json_str = ai_output[json_start:json_end]
-
-                analysis_data = json.loads(json_str)
-
-                return AnalyzePaperResponse(
-                    framework=analysis_data.get("framework", "暂无框架描述"),
-                    innovations=analysis_data.get("innovations", ["暂无创新点"]),
-                    methods=analysis_data.get("methods", ["暂无方法信息"]),
-                    source_code=analysis_data.get("source_code"),
-                    has_code=analysis_data.get("has_code", False)
-                )
-
-            except json.JSONDecodeError:
-                # 如果JSON解析失败，返回默认值
-                raise HTTPException(
-                    status_code=500,
-                    detail="AI返回格式错误，请重试"
-                )
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="AI服务超时，请稍后重试"
-        )
     except HTTPException:
         raise
     except Exception as e:

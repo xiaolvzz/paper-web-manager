@@ -1,11 +1,10 @@
 """对话路由 - AI对话功能"""
 from fastapi import APIRouter, HTTPException
 from typing import List, Optional
-import os
-import httpx
 from datetime import datetime
 
 from backend.database import get_supabase_client
+from backend.utils.ai_providers import ai_manager
 from backend.models import (
     Conversation,
     ConversationCreate,
@@ -51,13 +50,12 @@ def build_ai_context(paper_data: dict, recent_conversations: List[dict]) -> str:
     return system_prompt
 
 
-async def call_groq_api(system_prompt: str, user_message: str, conversation_history: List[dict]) -> str:
-    """调用Groq API获取AI回复"""
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
+async def call_ai_api(system_prompt: str, user_message: str, conversation_history: List[dict]) -> str:
+    """调用AI服务获取回复"""
+    if not ai_manager.is_configured():
         raise HTTPException(
             status_code=500,
-            detail="AI服务未配置。请联系管理员配置GROQ_API_KEY环境变量。"
+            detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
 
     # 构建消息列表
@@ -73,38 +71,9 @@ async def call_groq_api(system_prompt: str, user_message: str, conversation_hist
     # 添加当前用户消息
     messages.append({"role": "user", "content": user_message})
 
-    # 调用Groq API
+    # 调用AI API
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {api_key}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "llama-3.2-90b-text-preview",
-                    "messages": messages,
-                    "temperature": 0.7,
-                    "max_tokens": 2048
-                }
-            )
-
-            if response.status_code != 200:
-                error_detail = response.text
-                raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"AI API调用失败: {error_detail}"
-                )
-
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-
-    except httpx.TimeoutException:
-        raise HTTPException(
-            status_code=504,
-            detail="AI服务超时，请稍后重试"
-        )
+        return await ai_manager.chat(messages, temperature=0.7, max_tokens=2048)
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -149,7 +118,7 @@ async def chat_with_ai(request: ChatRequest):
     system_prompt = build_ai_context(paper_data, conversation_history)
 
     # 5. 调用AI获取回复
-    ai_response = await call_groq_api(system_prompt, request.user_message, conversation_history)
+    ai_response = await call_ai_api(system_prompt, request.user_message, conversation_history)
 
     # 6. 保存AI回复
     assistant_conv = {
