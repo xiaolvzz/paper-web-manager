@@ -96,6 +96,20 @@ function renderPaperInfo() {
                     <strong>标签：</strong> ${renderTags(currentPaper.tags)}
                 </div>
             ` : ''}
+            ${currentPaper.structured_tags ? `
+                <div class="col-12 mb-2">
+                    <strong>🏷️ 结构化标签：</strong>
+                    ${parseJsonbField(currentPaper.structured_tags).map(tag =>
+                        `<span class="badge bg-info me-1">${escapeHtml(tag)}</span>`
+                    ).join('')}
+                </div>
+            ` : ''}
+            ${currentPaper.main_work ? `
+                <div class="col-12 mb-3">
+                    <strong>📝 主要工作：</strong>
+                    <p class="mt-2 text-muted" style="line-height: 1.6;">${escapeHtml(currentPaper.main_work)}</p>
+                </div>
+            ` : ''}
             ${currentPaper.abstract ? `
                 <div class="col-12 mt-3">
                     <strong>摘要：</strong>
@@ -873,6 +887,23 @@ function viewPDF() {
 // HTML转义函数已在文件开头定义，无需重复
 
 // ========== 自动分析功能 ==========
+
+/**
+ * 安全解析JSONB字段（可能是字符串、数组或null）
+ */
+function parseJsonbField(value) {
+    if (!value) return [];
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') {
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+    return [];
+}
 
 /**
  * 触发AI自动分析
