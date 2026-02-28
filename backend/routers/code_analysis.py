@@ -17,6 +17,7 @@ class CodeAnalysisRequest(BaseModel):
     repo_url: str
     paper_id: Optional[int] = None
     force_refresh: bool = False  # 是否强制重新分析
+    provider_id: Optional[str] = None  # 指定使用的AI模型，不指定则使用默认
 
 
 class CodeAnalysisResponse(BaseModel):
@@ -41,6 +42,17 @@ async def analyze_code_architecture(request: CodeAnalysisRequest, db: Client = D
         repo_url = request.repo_url.strip()
         paper_id = request.paper_id
         force_refresh = request.force_refresh
+        provider_id = request.provider_id
+
+        # 如果指定了provider_id，临时切换到该provider
+        original_provider_id = None
+        if provider_id:
+            original_provider_id = ai_manager.get_provider_id()
+            if not ai_manager.use_provider(provider_id):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"AI模型 {provider_id} 未配置，请先在环境变量中配置相应的API密钥"
+                )
 
         # 验证GitHub URL
         if not repo_url.startswith('http') or 'github.com' not in repo_url:
@@ -110,7 +122,7 @@ async def analyze_code_architecture(request: CodeAnalysisRequest, db: Client = D
                 "code_analysis_model": ai_display_name
             }).eq("id", paper_id).execute()
 
-        return CodeAnalysisResponse(
+        response = CodeAnalysisResponse(
             success=True,
             analysis=analysis_text,
             repo_url=repo_url,
@@ -120,9 +132,18 @@ async def analyze_code_architecture(request: CodeAnalysisRequest, db: Client = D
             analysis_date=datetime.now().isoformat()
         )
 
+        # 恢复原来的provider（如果之前切换过）
+        if original_provider_id:
+            ai_manager.use_provider(original_provider_id)
+
+        return response
+
     except HTTPException:
         raise
     except Exception as e:
+        # 恢复原来的provider（如果之前切换过）
+        if provider_id and original_provider_id:
+            ai_manager.use_provider(original_provider_id)
         raise HTTPException(status_code=500, detail=f"分析失败: {str(e)}")
 
 

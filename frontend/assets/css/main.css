@@ -374,3 +374,39 @@ body {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* AI模型选择器样式 */
+#aiModelSelector {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+#aiModelSelector:hover {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.1);
+}
+
+#aiModelSelector option:disabled {
+    color: #adb5bd;
+    font-style: italic;
+}
+
+#modelConfigHint {
+    display: block;
+    margin-top: 5px;
+    font-size: 0.8rem;
+}
+
+#modelConfigHint a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+#modelConfigHint a:hover {
+    text-decoration: underline;
+}

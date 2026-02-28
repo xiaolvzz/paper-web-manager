@@ -251,7 +251,7 @@
 
                     <!-- AI代码架构分析 -->
                     <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <label class="form-label fw-bold mb-0">🤖 AI代码架构分析</label>
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-info" onclick="analyzeCodeArchitecture(false)" id="analyzeCodeBtn">
@@ -265,6 +265,16 @@
                                     📋 复制
                                 </button>
                             </div>
+                        </div>
+                        <!-- AI模型选择器 -->
+                        <div class="mb-3">
+                            <label class="form-label text-muted small mb-1">选择AI模型：</label>
+                            <select class="form-select form-select-sm" id="aiModelSelector" onchange="handleModelSelection()">
+                                <option value="">加载中...</option>
+                            </select>
+                            <small class="text-muted">
+                                <span id="modelConfigHint">提示：在 .env 文件中配置API密钥来启用更多模型</span>
+                            </small>
                         </div>
                         <div id="codeAnalysisResult" style="display: none;">
                             <div class="alert alert-light border">
@@ -365,6 +375,24 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
                     <button type="button" class="btn btn-primary" onclick="addRelation()">添加</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用Modal（用于显示配置指南等） -->
+    <div class="modal fade" id="generalModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generalModalLabel">信息</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="generalModalBody">
+                    <!-- 内容将动态插入 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
                 </div>
             </div>
         </div>

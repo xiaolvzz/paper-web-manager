@@ -142,6 +142,43 @@ async def ai_health():
     }
 
 
+@router.get("/models")
+async def get_available_models():
+    """获取所有AI模型列表和配置状态"""
+    models = ai_manager.get_all_providers_status()
+    current_provider_id = ai_manager.get_provider_id()
+
+    return {
+        "models": models,
+        "current_provider": current_provider_id,
+        "any_configured": ai_manager.is_configured()
+    }
+
+
+class SelectModelRequest(BaseModel):
+    """选择模型请求"""
+    provider_id: str = Field(..., description="模型提供商ID (gemini, claude, deepseek等)")
+
+
+@router.post("/select-model")
+async def select_model(request: SelectModelRequest):
+    """选择使用指定的AI模型"""
+    success = ai_manager.use_provider(request.provider_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail=f"模型 {request.provider_id} 未配置，请先在环境变量中配置相应的API密钥"
+        )
+
+    return {
+        "success": True,
+        "provider": ai_manager.get_provider_name(),
+        "model": ai_manager.get_model_name(),
+        "provider_id": request.provider_id
+    }
+
+
 class AnalyzePaperRequest(BaseModel):
     """一键分析论文请求"""
     paper_id: int = Field(..., description="论文ID")

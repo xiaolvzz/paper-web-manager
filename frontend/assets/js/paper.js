@@ -50,6 +50,9 @@ async function loadPaperDetails(paperId) {
         renderPaperInfo();
         renderAnalysis();
         renderRelations();
+
+        // 加载可用的AI模型列表
+        await loadAvailableModels();
     } catch (error) {
         showToast('加载论文详情失败: ' + error.message, 'error');
     }
@@ -1317,6 +1320,187 @@ window.debugPaper = debugPaper;
 // ========== AI代码架构分析功能 ==========
 
 let codeAnalysisCache = null;
+let availableModels = [];
+let selectedProviderId = null;  // 用户选择的模型ID
+
+/**
+ * 加载可用的AI模型列表
+ */
+async function loadAvailableModels() {
+    try {
+        const response = await fetch('/api/ai/models');
+        if (!response.ok) {
+            console.error('加载AI模型列表失败');
+            return;
+        }
+
+        const data = await response.json();
+        availableModels = data.models;
+        selectedProviderId = data.current_provider;
+
+        // 渲染模型选择器
+        renderModelSelector(data.models, data.current_provider);
+
+    } catch (error) {
+        console.error('加载AI模型列表失败:', error);
+    }
+}
+
+/**
+ * 渲染模型选择器
+ */
+function renderModelSelector(models, currentProvider) {
+    const selector = document.getElementById('aiModelSelector');
+    if (!selector) return;
+
+    selector.innerHTML = '';
+
+    // 按配置状态分组
+    const configuredModels = models.filter(m => m.configured);
+    const unconfiguredModels = models.filter(m => !m.configured);
+
+    // 添加已配置的模型
+    if (configuredModels.length > 0) {
+        configuredModels.forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.id;
+            option.textContent = `${model.name} (${model.model}) - ${model.cost}`;
+            if (model.is_default) {
+                option.textContent += ' [默认]';
+            }
+            option.selected = model.id === currentProvider;
+            selector.appendChild(option);
+        });
+    }
+
+    // 添加分隔线
+    if (unconfiguredModels.length > 0 && configuredModels.length > 0) {
+        const separator = document.createElement('option');
+        separator.disabled = true;
+        separator.textContent = '────── 未配置 ──────';
+        selector.appendChild(separator);
+    }
+
+    // 添加未配置的模型（禁用状态）
+    unconfiguredModels.forEach(model => {
+        const option = document.createElement('option');
+        option.value = model.id;
+        option.textContent = `${model.name} (${model.model}) - 未配置`;
+        option.disabled = true;
+        option.style.color = '#999';
+        selector.appendChild(option);
+    });
+
+    // 如果没有任何已配置的模型
+    if (configuredModels.length === 0) {
+        selector.innerHTML = '<option disabled>未配置任何AI模型</option>';
+        document.getElementById('modelConfigHint').innerHTML =
+            '⚠️ <a href="#" onclick="showModelConfigGuide()">点击查看配置指南</a>';
+    } else {
+        const configuredCount = configuredModels.length;
+        const totalCount = models.length;
+        document.getElementById('modelConfigHint').innerHTML =
+            `已配置 ${configuredCount}/${totalCount} 个模型 | <a href="#" onclick="showModelConfigGuide()">配置更多</a>`;
+    }
+}
+
+/**
+ * 处理模型选择
+ */
+async function handleModelSelection() {
+    const selector = document.getElementById('aiModelSelector');
+    const providerId = selector.value;
+
+    if (!providerId) return;
+
+    selectedProviderId = providerId;
+
+    try {
+        // 通知后端切换模型
+        const response = await fetch('/api/ai/select-model', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider_id: providerId })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            showToast(`✓ 已切换到 ${data.provider}`, 'success');
+        } else {
+            const error = await response.json();
+            showToast(`切换失败: ${error.detail}`, 'error');
+        }
+
+    } catch (error) {
+        console.error('切换模型失败:', error);
+        showToast('切换模型失败', 'error');
+    }
+}
+
+/**
+ * 显示模型配置指南
+ */
+function showModelConfigGuide() {
+    const guide = `
+<h5>AI模型配置指南</h5>
+
+<p><strong>方式1：编辑 .env 文件</strong></p>
+<pre>
+# Gemini (完全免费)
+GEMINI_API_KEY=your_key_here
+GEMINI_MODEL=gemini-2.0-flash-exp
+
+# Claude (推理能力强)
+CLAUDE_API_KEY=sk-ant-api03-xxx
+CLAUDE_MODEL=claude-3-5-haiku-20241022
+
+# DeepSeek (极低成本)
+DEEPSEEK_API_KEY=your_key_here
+DEEPSEEK_MODEL=deepseek-chat
+
+# 智谱AI (免费，国内访问)
+ZHIPU_API_KEY=your_key_here
+ZHIPU_MODEL=glm-4-flash
+
+# 通义千问
+QWEN_API_KEY=your_key_here
+QWEN_MODEL=qwen-turbo
+
+# OpenAI
+OPENAI_API_KEY=sk-xxx
+OPENAI_MODEL=gpt-4o-mini
+
+# Groq (免费)
+GROQ_API_KEY=gsk_xxx
+GROQ_MODEL=llama-3.2-90b-text-preview
+</pre>
+
+<p><strong>方式2：Vercel环境变量</strong></p>
+<ol>
+  <li>打开 Vercel 项目设置</li>
+  <li>Settings → Environment Variables</li>
+  <li>添加对应的环境变量</li>
+  <li>重新部署</li>
+</ol>
+
+<p><strong>推荐组合：</strong></p>
+<ul>
+  <li>🎯 免费优先：Gemini + 智谱AI</li>
+  <li>💰 公司使用：Claude + DeepSeek</li>
+  <li>⚡ 速度优先：Groq + Gemini</li>
+</ul>
+
+<p class="text-muted">配置后重启应用即可生效。</p>
+    `;
+
+    // 使用Bootstrap Modal显示
+    const modal = new bootstrap.Modal(document.getElementById('generalModal'));
+    document.getElementById('generalModalLabel').textContent = 'AI模型配置指南';
+    document.getElementById('generalModalBody').innerHTML = guide;
+    modal.show();
+
+    return false; // 阻止链接默认行为
+}
 
 /**
  * 分析代码架构
@@ -1346,14 +1530,21 @@ async function analyzeCodeArchitecture(forceRefresh = false) {
     spinner.classList.remove('d-none');
 
     try {
+        const requestBody = {
+            repo_url: sourceCodeUrl,
+            paper_id: currentPaper?.id,
+            force_refresh: forceRefresh
+        };
+
+        // 如果用户选择了特定模型，传递provider_id
+        if (selectedProviderId) {
+            requestBody.provider_id = selectedProviderId;
+        }
+
         const response = await fetch('/api/code-analysis/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                repo_url: sourceCodeUrl,
-                paper_id: currentPaper?.id,
-                force_refresh: forceRefresh
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {

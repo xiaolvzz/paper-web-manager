@@ -344,6 +344,7 @@ class AIManager:
 
     def __init__(self):
         self.provider: Optional[AIProvider] = None
+        self.all_providers: Dict[str, AIProvider] = {}  # 存储所有已配置的providers
         self._initialize_provider()
 
     def _initialize_provider(self):
@@ -357,61 +358,78 @@ class AIManager:
         6. OpenAI GPT (贵)
         7. Groq (备选)
         """
-        # 1. 优先Gemini 2.0 Flash (完全免费，性能最强)
+        # 1. Gemini 2.0 Flash (完全免费，性能最强)
         gemini_key = os.getenv("GEMINI_API_KEY")
         gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp")
         if gemini_key:
-            self.provider = GeminiProvider(gemini_key, model=gemini_model)
-            print(f"✓ 使用 Google Gemini {gemini_model} (完全免费)")
-            return
+            gemini_provider = GeminiProvider(gemini_key, model=gemini_model)
+            self.all_providers["gemini"] = gemini_provider
+            if not self.provider:
+                self.provider = gemini_provider
+                print(f"✓ 使用 Google Gemini {gemini_model} (完全免费)")
 
         # 2. 智谱AI GLM-4-Flash (完全免费，国内访问)
         zhipu_key = os.getenv("ZHIPU_API_KEY")
         zhipu_model = os.getenv("ZHIPU_MODEL", "glm-4-flash")
         if zhipu_key:
-            self.provider = ZhipuAIProvider(zhipu_key, model=zhipu_model)
-            print(f"✓ 使用 智谱AI {zhipu_model} (完全免费)")
-            return
+            zhipu_provider = ZhipuAIProvider(zhipu_key, model=zhipu_model)
+            self.all_providers["zhipu"] = zhipu_provider
+            if not self.provider:
+                self.provider = zhipu_provider
+                print(f"✓ 使用 智谱AI {zhipu_model} (完全免费)")
 
         # 3. DeepSeek (极低成本)
         deepseek_key = os.getenv("DEEPSEEK_API_KEY")
+        deepseek_model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
         if deepseek_key:
-            self.provider = DeepSeekProvider(deepseek_key)
-            print("✓ 使用 DeepSeek-V3 (极低成本)")
-            return
+            deepseek_provider = DeepSeekProvider(deepseek_key, model=deepseek_model)
+            self.all_providers["deepseek"] = deepseek_provider
+            if not self.provider:
+                self.provider = deepseek_provider
+                print(f"✓ 使用 DeepSeek {deepseek_model} (极低成本)")
 
         # 4. 通义千问
         qwen_key = os.getenv("QWEN_API_KEY")
         qwen_model = os.getenv("QWEN_MODEL", "qwen-turbo")
         if qwen_key:
-            self.provider = QwenProvider(qwen_key, model=qwen_model)
-            print(f"✓ 使用 通义千问 {qwen_model}")
-            return
+            qwen_provider = QwenProvider(qwen_key, model=qwen_model)
+            self.all_providers["qwen"] = qwen_provider
+            if not self.provider:
+                self.provider = qwen_provider
+                print(f"✓ 使用 通义千问 {qwen_model}")
 
         # 5. Claude (推理能力强，但需要付费)
         claude_key = os.getenv("CLAUDE_API_KEY")
         claude_model = os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022")
         if claude_key:
-            self.provider = ClaudeProvider(claude_key, model=claude_model)
-            print(f"✓ 使用 Anthropic Claude {claude_model}")
-            return
+            claude_provider = ClaudeProvider(claude_key, model=claude_model)
+            self.all_providers["claude"] = claude_provider
+            if not self.provider:
+                self.provider = claude_provider
+                print(f"✓ 使用 Anthropic Claude {claude_model}")
 
         # 6. OpenAI GPT (贵，但性能稳定)
         openai_key = os.getenv("OPENAI_API_KEY")
         openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
         if openai_key:
-            self.provider = OpenAIProvider(openai_key, model=openai_model)
-            print(f"✓ 使用 OpenAI {openai_model}")
-            return
+            openai_provider = OpenAIProvider(openai_key, model=openai_model)
+            self.all_providers["openai"] = openai_provider
+            if not self.provider:
+                self.provider = openai_provider
+                print(f"✓ 使用 OpenAI {openai_model}")
 
         # 7. Groq（备选，免费但可能被限）
         groq_key = os.getenv("GROQ_API_KEY")
+        groq_model = os.getenv("GROQ_MODEL", "llama-3.2-90b-text-preview")
         if groq_key:
-            self.provider = GroqProvider(groq_key)
-            print("✓ 使用 Groq (免费)")
-            return
+            groq_provider = GroqProvider(groq_key, model=groq_model)
+            self.all_providers["groq"] = groq_provider
+            if not self.provider:
+                self.provider = groq_provider
+                print(f"✓ 使用 Groq {groq_model} (免费)")
 
-        print("⚠️  未配置任何AI服务")
+        if not self.provider:
+            print("⚠️  未配置任何AI服务")
 
     def is_configured(self) -> bool:
         """检查是否配置了AI服务"""
@@ -428,6 +446,89 @@ class AIManager:
         if self.provider:
             return self.provider.model
         return "未配置"
+
+    def get_all_providers_status(self) -> List[Dict]:
+        """获取所有支持的AI模型及其配置状态"""
+        all_models = [
+            {
+                "id": "gemini",
+                "name": "Google Gemini",
+                "model": os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+                "configured": "gemini" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, GeminiProvider),
+                "cost": "免费",
+                "description": "性能强，完全免费"
+            },
+            {
+                "id": "zhipu",
+                "name": "智谱AI (GLM-4)",
+                "model": os.getenv("ZHIPU_MODEL", "glm-4-flash"),
+                "configured": "zhipu" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, ZhipuAIProvider),
+                "cost": "免费",
+                "description": "中文理解强，国内访问"
+            },
+            {
+                "id": "deepseek",
+                "name": "DeepSeek",
+                "model": os.getenv("DEEPSEEK_MODEL", "deepseek-chat"),
+                "configured": "deepseek" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, DeepSeekProvider),
+                "cost": "极低成本",
+                "description": "性价比极高"
+            },
+            {
+                "id": "qwen",
+                "name": "通义千问",
+                "model": os.getenv("QWEN_MODEL", "qwen-turbo"),
+                "configured": "qwen" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, QwenProvider),
+                "cost": "廉价",
+                "description": "阿里云，稳定快速"
+            },
+            {
+                "id": "claude",
+                "name": "Anthropic Claude",
+                "model": os.getenv("CLAUDE_MODEL", "claude-3-5-haiku-20241022"),
+                "configured": "claude" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, ClaudeProvider),
+                "cost": "付费",
+                "description": "推理能力最强"
+            },
+            {
+                "id": "openai",
+                "name": "OpenAI GPT",
+                "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+                "configured": "openai" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, OpenAIProvider),
+                "cost": "付费",
+                "description": "业界标杆"
+            },
+            {
+                "id": "groq",
+                "name": "Groq",
+                "model": os.getenv("GROQ_MODEL", "llama-3.2-90b-text-preview"),
+                "configured": "groq" in self.all_providers,
+                "is_default": self.provider and isinstance(self.provider, GroqProvider),
+                "cost": "免费",
+                "description": "速度极快"
+            }
+        ]
+        return all_models
+
+    def use_provider(self, provider_id: str) -> bool:
+        """临时切换到指定的provider"""
+        if provider_id in self.all_providers:
+            self.provider = self.all_providers[provider_id]
+            return True
+        return False
+
+    def get_provider_id(self) -> str:
+        """获取当前使用的provider ID"""
+        for pid, provider in self.all_providers.items():
+            if provider == self.provider:
+                return pid
+        return "unknown"
 
     async def chat(self, messages: List[Dict], temperature: float = 0.7, max_tokens: int = 2048) -> str:
         """发送对话请求"""
