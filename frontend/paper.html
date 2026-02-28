@@ -253,10 +253,13 @@
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="form-label fw-bold mb-0">🤖 AI代码架构分析</label>
-                            <div>
-                                <button class="btn btn-sm btn-info" onclick="analyzeCodeArchitecture()" id="analyzeCodeBtn">
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-info" onclick="analyzeCodeArchitecture(false)" id="analyzeCodeBtn">
                                     <span id="analyzeCodeBtnText">📊 分析架构</span>
                                     <span id="analyzeCodeSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                                </button>
+                                <button class="btn btn-sm btn-warning" onclick="reanalyzeCode()" id="reanalyzeBtn" style="display:none;" title="重新分析">
+                                    🔄 重新分析
                                 </button>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="copyCodeAnalysis()" id="copyCodeAnalysisBtn" style="display:none;">
                                     📋 复制
@@ -271,7 +274,7 @@
                             </div>
                         </div>
                         <small class="text-muted">
-                            AI将分析代码的算法架构、模块组成、张量维度、数学原理和工程细节
+                            <strong>6层深度分析：</strong>目录结构 → 模型身份 → 架构组成 → 张量维度 → 数学原理 → 训练细节
                         </small>
                     </div>
 

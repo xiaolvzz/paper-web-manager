@@ -1321,7 +1321,7 @@ let codeAnalysisCache = null;
 /**
  * 分析代码架构
  */
-async function analyzeCodeArchitecture() {
+async function analyzeCodeArchitecture(forceRefresh = false) {
     const sourceCodeUrl = document.getElementById('sourceCodeUrl').value.trim();
 
     if (!sourceCodeUrl) {
@@ -1340,6 +1340,7 @@ async function analyzeCodeArchitecture() {
     const resultDiv = document.getElementById('codeAnalysisResult');
     const contentDiv = document.getElementById('codeAnalysisContent');
     const copyBtn = document.getElementById('copyCodeAnalysisBtn');
+    const reanalyzeBtn = document.getElementById('reanalyzeBtn');
 
     btnText.classList.add('d-none');
     spinner.classList.remove('d-none');
@@ -1350,7 +1351,8 @@ async function analyzeCodeArchitecture() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 repo_url: sourceCodeUrl,
-                paper_id: currentPaper?.id
+                paper_id: currentPaper?.id,
+                force_refresh: forceRefresh
             })
         });
 
@@ -1362,12 +1364,21 @@ async function analyzeCodeArchitecture() {
         const data = await response.json();
         codeAnalysisCache = data.analysis;
 
+        // 构建结果头部（显示AI模型信息）
+        const headerHtml = buildAnalysisHeader(data);
+
         // 格式化并显示分析结果
-        contentDiv.innerHTML = formatCodeAnalysis(data.analysis);
+        contentDiv.innerHTML = headerHtml + formatCodeAnalysis(data.analysis);
         resultDiv.style.display = 'block';
         copyBtn.style.display = 'inline-block';
 
-        showToast('✓ 代码架构分析完成', 'success');
+        // 显示重新分析按钮（如果是缓存结果）
+        if (data.cached && reanalyzeBtn) {
+            reanalyzeBtn.style.display = 'inline-block';
+        }
+
+        const message = data.cached ? '✓ 已加载保存的分析结果' : '✓ 代码架构分析完成';
+        showToast(message, 'success');
 
     } catch (error) {
         console.error('代码分析失败:', error);
@@ -1382,6 +1393,47 @@ async function analyzeCodeArchitecture() {
         btnText.classList.remove('d-none');
         spinner.classList.add('d-none');
     }
+}
+
+/**
+ * 构建分析结果头部（显示AI模型信息）
+ */
+function buildAnalysisHeader(data) {
+    const cached = data.cached;
+    const provider = data.ai_provider;
+    const model = data.ai_model;
+    const date = data.analysis_date ? new Date(data.analysis_date).toLocaleString('zh-CN') : '';
+
+    let statusBadge = '';
+    if (cached) {
+        statusBadge = `<span class="badge bg-secondary">📦 已缓存</span>`;
+    } else {
+        statusBadge = `<span class="badge bg-success">✨ 新生成</span>`;
+    }
+
+    return `
+        <div class="alert alert-info border-start border-4 border-info mb-3" style="background-color: #e7f3ff;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>🤖 AI模型：</strong>
+                    <span class="badge bg-primary">${provider}</span>
+                    <span class="badge bg-light text-dark">${model}</span>
+                    ${statusBadge}
+                </div>
+                ${date ? `<small class="text-muted">分析时间：${date}</small>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * 重新分析（强制刷新）
+ */
+async function reanalyzeCode() {
+    if (!confirm('确定要重新分析吗？这将使用AI重新生成分析结果。')) {
+        return;
+    }
+    await analyzeCodeArchitecture(true);  // forceRefresh = true
 }
 
 /**
