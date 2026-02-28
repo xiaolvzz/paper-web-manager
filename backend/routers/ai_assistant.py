@@ -14,12 +14,14 @@ class SummarizeRequest(BaseModel):
     """摘要请求模型"""
     text: str = Field(..., description="要摘要的文本（如论文摘要）")
     max_length: int = Field(200, description="最大摘要长度（字数）", ge=50, le=500)
+    provider_id: Optional[str] = Field(None, description="指定AI模型ID")
 
 
 class InnovationRequest(BaseModel):
     """创新点提取请求模型"""
     abstract: str = Field(..., description="论文摘要")
     title: Optional[str] = Field(None, description="论文标题（可选，提供更准确的分析）")
+    provider_id: Optional[str] = Field(None, description="指定AI模型ID")
 
 
 class AIResponse(BaseModel):
@@ -40,6 +42,16 @@ async def summarize_text(request: SummarizeRequest):
             status_code=500,
             detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
+
+    # 如果指定了provider_id，临时切换
+    original_provider_id = None
+    if request.provider_id:
+        original_provider_id = ai_manager.get_provider_id()
+        if not ai_manager.use_provider(request.provider_id):
+            raise HTTPException(
+                status_code=400,
+                detail=f"AI模型 {request.provider_id} 未配置"
+            )
 
     # 构建prompt
     prompt = f"""请用简洁的中文总结以下论文摘要，突出关键内容：
@@ -67,12 +79,21 @@ async def summarize_text(request: SummarizeRequest):
 
         summary = await ai_manager.chat(messages, temperature=0.7, max_tokens=512)
 
-        return AIResponse(
+        response = AIResponse(
             content=summary,
             model=f"{ai_manager.get_provider_name()} - {ai_manager.get_model_name()}"
         )
 
+        # 恢复原provider
+        if original_provider_id:
+            ai_manager.use_provider(original_provider_id)
+
+        return response
+
     except Exception as e:
+        # 恢复原provider
+        if request.provider_id and original_provider_id:
+            ai_manager.use_provider(original_provider_id)
         raise HTTPException(
             status_code=500,
             detail=f"生成摘要时出错: {str(e)}"
@@ -91,6 +112,16 @@ async def extract_innovations(request: InnovationRequest):
             status_code=500,
             detail="AI服务未配置。请配置以下任一API密钥：DEEPSEEK_API_KEY, ZHIPU_API_KEY, QWEN_API_KEY, GROQ_API_KEY"
         )
+
+    # 如果指定了provider_id，临时切换
+    original_provider_id = None
+    if request.provider_id:
+        original_provider_id = ai_manager.get_provider_id()
+        if not ai_manager.use_provider(request.provider_id):
+            raise HTTPException(
+                status_code=400,
+                detail=f"AI模型 {request.provider_id} 未配置"
+            )
 
     # 构建prompt
     title_part = f"论文标题：{request.title}\n\n" if request.title else ""
@@ -119,12 +150,21 @@ async def extract_innovations(request: InnovationRequest):
 
         innovations = await ai_manager.chat(messages, temperature=0.5, max_tokens=512)
 
-        return AIResponse(
+        response = AIResponse(
             content=innovations,
             model=f"{ai_manager.get_provider_name()} - {ai_manager.get_model_name()}"
         )
 
+        # 恢复原provider
+        if original_provider_id:
+            ai_manager.use_provider(original_provider_id)
+
+        return response
+
     except Exception as e:
+        # 恢复原provider
+        if request.provider_id and original_provider_id:
+            ai_manager.use_provider(original_provider_id)
         raise HTTPException(
             status_code=500,
             detail=f"提取创新点时出错: {str(e)}"

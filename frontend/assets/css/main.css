@@ -410,3 +410,49 @@ body {
 #modelConfigHint a:hover {
     text-decoration: underline;
 }
+
+/* AI设置Modal样式 */
+.model-card {
+    padding: 15px;
+    margin-bottom: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    background: white;
+    transition: all 0.2s ease;
+}
+
+.model-card:hover {
+    border-color: #007bff;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
+}
+
+.model-card.selected {
+    border-color: #28a745;
+    background: #f0f9ff;
+}
+
+.model-card.disabled {
+    opacity: 0.6;
+    background: #f8f9fa;
+}
+
+.model-card.disabled:hover {
+    border-color: #e9ecef;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+
+#currentModelDisplay {
+    font-size: 1.1rem;
+}
+
+#aiSettingsModal .accordion-button {
+    font-size: 0.95rem;
+    padding: 12px 16px;
+}
+
+#aiSettingsModal pre {
+    font-size: 0.85rem;
+    max-height: 300px;
+    overflow-y: auto;
+}

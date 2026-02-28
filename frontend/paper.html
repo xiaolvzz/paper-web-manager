@@ -15,6 +15,10 @@
             <div class="navbar-nav ms-auto">
                 <a class="nav-link" href="/">论文列表</a>
                 <a class="nav-link" href="/graph">关系图</a>
+                <a class="nav-link" href="#" onclick="openAISettings(); return false;">
+                    ⚙️ AI设置
+                    <span class="badge bg-primary" id="currentModelBadge" style="font-size: 0.7rem;">加载中</span>
+                </a>
             </div>
         </div>
     </nav>
@@ -251,7 +255,7 @@
 
                     <!-- AI代码架构分析 -->
                     <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="form-label fw-bold mb-0">🤖 AI代码架构分析</label>
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-info" onclick="analyzeCodeArchitecture(false)" id="analyzeCodeBtn">
@@ -265,16 +269,6 @@
                                     📋 复制
                                 </button>
                             </div>
-                        </div>
-                        <!-- AI模型选择器 -->
-                        <div class="mb-3">
-                            <label class="form-label text-muted small mb-1">选择AI模型：</label>
-                            <select class="form-select form-select-sm" id="aiModelSelector" onchange="handleModelSelection()">
-                                <option value="">加载中...</option>
-                            </select>
-                            <small class="text-muted">
-                                <span id="modelConfigHint">提示：在 .env 文件中配置API密钥来启用更多模型</span>
-                            </small>
                         </div>
                         <div id="codeAnalysisResult" style="display: none;">
                             <div class="alert alert-light border">
@@ -398,8 +392,19 @@
         </div>
     </div>
 
+    <script id="aiSettingsModalContainer"></script>
+    <script>
+        // 动态插入AI设置Modal
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof getAISettingsModalHTML === 'function') {
+                document.getElementById('aiSettingsModalContainer').outerHTML = getAISettingsModalHTML();
+            }
+        });
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/assets/js/api.js"></script>
+    <script src="/assets/js/ai-settings.js"></script>
     <script src="/assets/js/paper.js"></script>
 </body>
 </html>

@@ -50,9 +50,6 @@ async function loadPaperDetails(paperId) {
         renderPaperInfo();
         renderAnalysis();
         renderRelations();
-
-        // 加载可用的AI模型列表
-        await loadAvailableModels();
     } catch (error) {
         showToast('加载论文详情失败: ' + error.message, 'error');
     }
@@ -376,15 +373,23 @@ async function generateAISummary() {
     output.classList.add('d-none');
 
     try {
+        const requestBody = {
+            text: currentPaper.abstract,
+            max_length: 200
+        };
+
+        // 使用全局选择的模型
+        const providerId = getSelectedProviderId();
+        if (providerId) {
+            requestBody.provider_id = providerId;
+        }
+
         const response = await fetch('/api/ai/summarize', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                text: currentPaper.abstract,
-                max_length: 200
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -429,15 +434,23 @@ async function extractInnovations() {
     output.classList.add('d-none');
 
     try {
+        const requestBody = {
+            abstract: currentPaper.abstract,
+            title: currentPaper.title
+        };
+
+        // 使用全局选择的模型
+        const providerId = getSelectedProviderId();
+        if (providerId) {
+            requestBody.provider_id = providerId;
+        }
+
         const response = await fetch('/api/ai/extract-innovations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                abstract: currentPaper.abstract,
-                title: currentPaper.title
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (!response.ok) {
@@ -1318,33 +1331,9 @@ PDF文本长度: ${data.fields.pdf_text_content_length} 字符
 window.debugPaper = debugPaper;
 
 // ========== AI代码架构分析功能 ==========
+// AI全局设置已迁移到 ai-settings.js
 
 let codeAnalysisCache = null;
-let availableModels = [];
-let selectedProviderId = null;  // 用户选择的模型ID
-
-/**
- * 加载可用的AI模型列表
- */
-async function loadAvailableModels() {
-    try {
-        const response = await fetch('/api/ai/models');
-        if (!response.ok) {
-            console.error('加载AI模型列表失败');
-            return;
-        }
-
-        const data = await response.json();
-        availableModels = data.models;
-        selectedProviderId = data.current_provider;
-
-        // 渲染模型选择器
-        renderModelSelector(data.models, data.current_provider);
-
-    } catch (error) {
-        console.error('加载AI模型列表失败:', error);
-    }
-}
 
 /**
  * 渲染模型选择器
@@ -1536,9 +1525,10 @@ async function analyzeCodeArchitecture(forceRefresh = false) {
             force_refresh: forceRefresh
         };
 
-        // 如果用户选择了特定模型，传递provider_id
-        if (selectedProviderId) {
-            requestBody.provider_id = selectedProviderId;
+        // 使用全局选择的模型
+        const providerId = getSelectedProviderId();
+        if (providerId) {
+            requestBody.provider_id = providerId;
         }
 
         const response = await fetch('/api/code-analysis/analyze', {
