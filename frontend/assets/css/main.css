@@ -559,7 +559,6 @@ body {
 .note-content {
     color: #475569;
     line-height: 1.6;
-    white-space: pre-wrap;
     word-wrap: break-word;
     margin-bottom: 15px;
 }
@@ -568,6 +567,120 @@ body {
     content: "无内容";
     color: #94a3b8;
     font-style: italic;
+}
+
+/* Markdown 渲染样式 */
+.note-content h1,
+.note-content h2,
+.note-content h3,
+.note-content h4,
+.note-content h5,
+.note-content h6 {
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #1e293b;
+}
+
+.note-content h1 { font-size: 1.8em; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.3em; }
+.note-content h2 { font-size: 1.5em; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.3em; }
+.note-content h3 { font-size: 1.3em; }
+.note-content h4 { font-size: 1.1em; }
+.note-content h5 { font-size: 1em; }
+.note-content h6 { font-size: 0.9em; color: #64748b; }
+
+.note-content p {
+    margin-bottom: 1em;
+}
+
+.note-content strong {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.note-content em {
+    font-style: italic;
+}
+
+.note-content code {
+    background-color: #f1f5f9;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9em;
+    color: #e11d48;
+}
+
+.note-content pre {
+    background-color: #1e293b;
+    color: #e2e8f0;
+    padding: 1em;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.note-content pre code {
+    background-color: transparent;
+    padding: 0;
+    color: #e2e8f0;
+    font-size: 0.85em;
+}
+
+.note-content ul,
+.note-content ol {
+    margin-left: 1.5em;
+    margin-bottom: 1em;
+}
+
+.note-content li {
+    margin-bottom: 0.3em;
+}
+
+.note-content blockquote {
+    border-left: 4px solid #2563eb;
+    padding-left: 1em;
+    margin: 1em 0;
+    color: #64748b;
+    font-style: italic;
+}
+
+.note-content a {
+    color: #2563eb;
+    text-decoration: none;
+}
+
+.note-content a:hover {
+    text-decoration: underline;
+}
+
+.note-content hr {
+    border: none;
+    border-top: 2px solid #e2e8f0;
+    margin: 2em 0;
+}
+
+.note-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+}
+
+.note-content table th,
+.note-content table td {
+    border: 1px solid #e2e8f0;
+    padding: 0.5em;
+    text-align: left;
+}
+
+.note-content table th {
+    background-color: #f8fafc;
+    font-weight: 600;
+}
+
+.note-content table tr:hover {
+    background-color: #f8fafc;
 }
 
 .note-images {

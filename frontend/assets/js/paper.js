@@ -1923,26 +1923,47 @@ function renderNotes(noteType) {
 }
 
 /**
- * 渲染笔记内容（支持Markdown图片）
+ * 渲染笔记内容（支持完整Markdown语法）
  */
 function renderNoteContent(content) {
     if (!content) return '';
 
-    // 转义HTML以防止XSS
-    let escaped = escapeHtml(content);
+    // 检查是否有 marked 库
+    if (typeof marked === 'undefined') {
+        // 降级处理：简单渲染
+        let escaped = escapeHtml(content);
+        escaped = escaped.replace(/\n/g, '<br>');
+        return escaped;
+    }
 
-    // 渲染Markdown图片：![alt](url) -> <img>
-    escaped = escaped.replace(
-        /!\[([^\]]*)\]\(([^)]+)\)/g,
-        (match, alt, url) => {
-            return `<img src="${url}" alt="${alt}" class="note-inline-image" onclick="viewImage('${url}')" style="max-width: 100%; border-radius: 6px; margin: 10px 0; cursor: pointer; display: block;">`;
-        }
-    );
+    try {
+        // 配置 marked 选项
+        marked.setOptions({
+            breaks: true,        // 支持换行
+            gfm: true,          // 支持 GitHub Flavored Markdown
+            headerIds: false,   // 不生成标题ID
+            mangle: false       // 不混淆邮箱地址
+        });
 
-    // 渲染换行
-    escaped = escaped.replace(/\n/g, '<br>');
+        // 渲染 Markdown
+        let html = marked.parse(content);
 
-    return escaped;
+        // 为图片添加点击查看功能和样式
+        html = html.replace(
+            /<img([^>]*?)src="([^"]*?)"([^>]*?)>/g,
+            (match, before, src, after) => {
+                return `<img${before}src="${src}"${after} class="note-inline-image" onclick="viewImage('${src}')" style="max-width: 100%; border-radius: 6px; margin: 10px 0; cursor: pointer;">`;
+            }
+        );
+
+        return html;
+    } catch (error) {
+        console.error('Markdown 渲染失败:', error);
+        // 降级处理
+        let escaped = escapeHtml(content);
+        escaped = escaped.replace(/\n/g, '<br>');
+        return escaped;
+    }
 }
 
 /**
