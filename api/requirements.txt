@@ -7,3 +7,5 @@ requests
 httpx
 mangum
 arxiv
+bcrypt
+python-jose[cryptography]

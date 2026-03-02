@@ -8,3 +8,5 @@ requests==2.31.0
 httpx==0.25.1
 mangum==0.17.0
 arxiv==2.1.0
+bcrypt==4.1.2
+python-jose[cryptography]==3.3.0

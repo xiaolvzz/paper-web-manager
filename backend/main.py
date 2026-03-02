@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from backend.routers import papers, analysis, relations, arxiv_search, ai_assistant, conversations, translation, code_analysis, domains, code_notes, tags
+from backend.routers import papers, analysis, relations, arxiv_search, ai_assistant, conversations, translation, code_analysis, domains, code_notes, tags, auth_router
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -25,6 +25,7 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(auth_router.router)  # 认证路由（无需认证）
 app.include_router(papers.router)
 app.include_router(analysis.router)
 app.include_router(relations.router)
@@ -46,6 +47,11 @@ if not IS_VERCEL:
     frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
     try:
         app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
+
+        @app.get("/login")
+        async def login_page():
+            """登录页"""
+            return FileResponse(os.path.join(frontend_path, "login.html"))
 
         @app.get("/")
         async def root():

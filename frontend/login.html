@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 论文管理系统</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #334155;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+            padding: 12px 16px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .alert {
+            border-radius: 8px;
+            border: none;
+        }
+
+        .default-account {
+            background: #f1f5f9;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+        }
+
+        .default-account h6 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 8px;
+        }
+
+        .default-account code {
+            background: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 38px;
+            cursor: pointer;
+            color: #94a3b8;
+            user-select: none;
+        }
+
+        .password-toggle:hover {
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>📚 论文管理系统</h1>
+            <p>登录您的账户</p>
+        </div>
+
+        <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+
+        <form id="loginForm">
+            <div class="mb-3">
+                <label for="username" class="form-label">用户名</label>
+                <input type="text" class="form-control" id="username" required autofocus>
+            </div>
+
+            <div class="mb-4 position-relative">
+                <label for="password" class="form-label">密码</label>
+                <input type="password" class="form-control" id="password" required>
+                <span class="password-toggle" onclick="togglePassword()">👁️</span>
+            </div>
+
+            <button type="submit" class="btn btn-login" id="loginBtn">
+                <span id="loginBtnText">登录</span>
+                <span id="loginSpinner" class="spinner-border spinner-border-sm d-none"></span>
+            </button>
+        </form>
+
+        <div class="default-account">
+            <h6>🔐 默认账户</h6>
+            <p class="small mb-1">用户名: <code>admin</code></p>
+            <p class="small mb-0">密码: <code>admin123</code></p>
+            <p class="small text-muted mt-2 mb-0">⚠️ 首次登录后请立即修改密码！</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const errorAlert = document.getElementById('errorAlert');
+        const loginBtn = document.getElementById('loginBtn');
+        const loginBtnText = document.getElementById('loginBtnText');
+        const loginSpinner = document.getElementById('loginSpinner');
+
+        // 切换密码显示
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const toggle = document.querySelector('.password-toggle');
+
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggle.textContent = '👁️‍🗨️';
+            } else {
+                passwordInput.type = 'password';
+                toggle.textContent = '👁️';
+            }
+        }
+
+        // 显示错误
+        function showError(message) {
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('d-none');
+            setTimeout(() => {
+                errorAlert.classList.add('d-none');
+            }, 5000);
+        }
+
+        // 登录提交
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                showError('请输入用户名和密码');
+                return;
+            }
+
+            // 显示加载状态
+            loginBtn.disabled = true;
+            loginBtnText.textContent = '登录中...';
+            loginSpinner.classList.remove('d-none');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 保存 token
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('username', data.username);
+
+                    // 跳转到首页
+                    window.location.href = '/';
+                } else {
+                    showError(data.detail || '登录失败');
+                }
+            } catch (error) {
+                console.error('登录错误:', error);
+                showError('登录失败，请检查网络连接');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtnText.textContent = '登录';
+                loginSpinner.classList.add('d-none');
+            }
+        });
+
+        // 检查是否已登录
+        window.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('access_token');
+            if (token) {
+                try {
+                    const response = await fetch('/api/auth/verify', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (response.ok) {
+                        // 已登录，跳转到首页
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    // Token 无效，清除
+                    localStorage.removeItem('access_token');
+                    localStorage.removeItem('username');
+                }
+            }
+        });
+
+        // Enter 键提交
+        document.getElementById('password').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loginForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
