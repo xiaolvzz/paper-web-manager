@@ -1183,6 +1183,11 @@ function loadCodeInfo() {
     const codeOverview = document.getElementById('codeOverview');
     const noCodeHint = document.getElementById('noCodeHint');
 
+    // 如果元素不存在，直接返回（可能此部分UI已移除）
+    if (!sourceCodeUrl || !codeOverview || !noCodeHint) {
+        return;
+    }
+
     // 优先使用source_code_url，如果没有则使用github_url（兼容旧字段）
     const codeUrl = currentPaper.source_code_url || currentPaper.github_url;
 
@@ -1982,7 +1987,7 @@ async function saveNote() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    paper_id: paperId,
+                    paper_id: currentPaperId,
                     note_type: noteType,
                     title,
                     content: content || null,
