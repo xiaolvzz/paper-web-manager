@@ -37,6 +37,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkAIStatus();
     // 检查论文内容状态
     checkContentStatus();
+    // 初始化笔记功能
+    initializeNotes();
 });
 
 // 加载论文详情
@@ -1699,4 +1701,344 @@ function copyCodeAnalysis() {
         console.error('复制失败:', err);
         showToast('复制失败', 'error');
     });
+}
+
+// ==================== 笔记管理功能 ====================
+
+// 笔记临时存储
+let currentNotes = {
+    code: [],
+    discussion: []
+};
+
+// 当前编辑的笔记
+let currentEditingNote = null;
+
+// 临时存储的图片URLs（用于编辑时）
+let tempImageUrls = [];
+
+/**
+ * 加载笔记列表
+ */
+async function loadNotes(noteType) {
+    try {
+        const response = await fetch(`/api/code-notes/paper/${paperId}?note_type=${noteType}`);
+        if (!response.ok) {
+            throw new Error('加载笔记失败');
+        }
+
+        const notes = await response.json();
+        currentNotes[noteType] = notes;
+        renderNotes(noteType);
+    } catch (error) {
+        console.error(`加载${noteType}笔记失败:`, error);
+        showToast(`加载笔记失败: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * 渲染笔记列表
+ */
+function renderNotes(noteType) {
+    const listId = noteType === 'code' ? 'codeNotesList' : 'discussionNotesList';
+    const container = document.getElementById(listId);
+
+    if (!container) return;
+
+    const notes = currentNotes[noteType] || [];
+
+    if (notes.length === 0) {
+        container.innerHTML = '<p class="text-center text-muted">暂无笔记，点击"新建笔记"开始记录</p>';
+        return;
+    }
+
+    container.innerHTML = notes.map(note => {
+        const createdDate = new Date(note.created_at).toLocaleString('zh-CN');
+        const updatedDate = new Date(note.updated_at).toLocaleString('zh-CN');
+        const hasImages = note.images && note.images.length > 0;
+
+        return `
+            <div class="note-card" id="note-${note.id}">
+                <div class="note-card-header" onclick="toggleNoteCollapse(${note.id})">
+                    <div class="note-card-title">
+                        <h6>${escapeHtml(note.title)}</h6>
+                        ${hasImages ? `<span class="badge bg-info">${note.images.length} 张图</span>` : ''}
+                    </div>
+                    <div class="note-card-actions" onclick="event.stopPropagation()">
+                        <button onclick="editNote(${note.id}, '${noteType}')">✏️ 编辑</button>
+                        <button class="btn-delete" onclick="deleteNote(${note.id}, '${noteType}')">🗑️ 删除</button>
+                    </div>
+                    <span class="note-collapse-icon">▼</span>
+                </div>
+                <div class="note-card-body">
+                    ${note.content ? `<div class="note-content">${escapeHtml(note.content)}</div>` : '<div class="note-content"></div>'}
+
+                    ${hasImages ? `
+                        <div class="note-images">
+                            ${note.images.map(url => `
+                                <div class="note-image-item">
+                                    <img src="${escapeHtml(url)}" alt="笔记截图" onclick="viewImage('${escapeHtml(url)}')">
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+
+                    <div class="note-meta">
+                        <span>📅 创建：${createdDate}</span>
+                        ${note.created_at !== note.updated_at ? `<span>🔄 更新：${updatedDate}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * 切换笔记展开/折叠
+ */
+function toggleNoteCollapse(noteId) {
+    const noteCard = document.getElementById(`note-${noteId}`);
+    if (noteCard) {
+        noteCard.classList.toggle('note-collapsed');
+    }
+}
+
+/**
+ * 新建笔记
+ */
+function addNewNote(noteType) {
+    currentEditingNote = null;
+    tempImageUrls = [];
+
+    document.getElementById('noteEditorTitle').textContent = '新建笔记';
+    document.getElementById('noteId').value = '';
+    document.getElementById('noteType').value = noteType;
+    document.getElementById('noteTitle').value = '';
+    document.getElementById('noteContent').value = '';
+    document.getElementById('noteImagesPreview').innerHTML = '';
+    document.getElementById('noteImageInput').value = '';
+
+    const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
+    modal.show();
+}
+
+/**
+ * 编辑笔记
+ */
+function editNote(noteId, noteType) {
+    const note = currentNotes[noteType].find(n => n.id === noteId);
+    if (!note) {
+        showToast('笔记不存在', 'error');
+        return;
+    }
+
+    currentEditingNote = note;
+    tempImageUrls = [...(note.images || [])];
+
+    document.getElementById('noteEditorTitle').textContent = '编辑笔记';
+    document.getElementById('noteId').value = note.id;
+    document.getElementById('noteType').value = noteType;
+    document.getElementById('noteTitle').value = note.title;
+    document.getElementById('noteContent').value = note.content || '';
+
+    // 显示已有图片
+    renderImagePreview();
+
+    const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
+    modal.show();
+}
+
+/**
+ * 保存笔记
+ */
+async function saveNote() {
+    const noteId = document.getElementById('noteId').value;
+    const noteType = document.getElementById('noteType').value;
+    const title = document.getElementById('noteTitle').value.trim();
+    const content = document.getElementById('noteContent').value.trim();
+
+    if (!title) {
+        showToast('请输入标题', 'error');
+        return;
+    }
+
+    // 处理文件上传
+    const fileInput = document.getElementById('noteImageInput');
+    if (fileInput.files.length > 0) {
+        showSpinner('saveNoteSpinner', 'saveNoteBtnText', '上传图片中...');
+
+        for (let i = 0; i < fileInput.files.length; i++) {
+            const file = fileInput.files[i];
+            try {
+                const uploadedUrl = await uploadNoteImage(file);
+                tempImageUrls.push(uploadedUrl);
+            } catch (error) {
+                console.error('上传图片失败:', error);
+                showToast(`图片上传失败: ${error.message}`, 'error');
+                hideSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存');
+                return;
+            }
+        }
+    }
+
+    showSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存中...');
+
+    try {
+        let response;
+
+        if (noteId) {
+            // 更新现有笔记
+            response = await fetch(`/api/code-notes/${noteId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title,
+                    content: content || null,
+                    images: tempImageUrls
+                })
+            });
+        } else {
+            // 创建新笔记
+            response = await fetch('/api/code-notes/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    paper_id: paperId,
+                    note_type: noteType,
+                    title,
+                    content: content || null,
+                    images: tempImageUrls
+                })
+            });
+        }
+
+        if (!response.ok) {
+            throw new Error('保存失败');
+        }
+
+        showToast('✓ 笔记保存成功', 'success');
+
+        // 关闭模态框
+        const modal = bootstrap.Modal.getInstance(document.getElementById('noteEditorModal'));
+        modal.hide();
+
+        // 重新加载笔记列表
+        await loadNotes(noteType);
+
+    } catch (error) {
+        console.error('保存笔记失败:', error);
+        showToast(`保存失败: ${error.message}`, 'error');
+    } finally {
+        hideSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存');
+    }
+}
+
+/**
+ * 上传单张图片
+ */
+async function uploadNoteImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch('/api/code-notes/upload-image', {
+        method: 'POST',
+        body: formData
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || '上传失败');
+    }
+
+    const data = await response.json();
+    return data.url;
+}
+
+/**
+ * 渲染图片预览
+ */
+function renderImagePreview() {
+    const container = document.getElementById('noteImagesPreview');
+
+    if (tempImageUrls.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    container.innerHTML = tempImageUrls.map((url, index) => `
+        <div class="image-preview-item">
+            <img src="${escapeHtml(url)}" alt="预览">
+            <button class="image-preview-remove" onclick="removeImagePreview(${index})" type="button">×</button>
+        </div>
+    `).join('');
+}
+
+/**
+ * 删除图片预览
+ */
+function removeImagePreview(index) {
+    tempImageUrls.splice(index, 1);
+    renderImagePreview();
+}
+
+/**
+ * 删除笔记
+ */
+async function deleteNote(noteId, noteType) {
+    if (!confirm('确定要删除这条笔记吗？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/code-notes/${noteId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) {
+            throw new Error('删除失败');
+        }
+
+        showToast('✓ 笔记已删除', 'success');
+        await loadNotes(noteType);
+    } catch (error) {
+        console.error('删除笔记失败:', error);
+        showToast(`删除失败: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * 查看大图
+ */
+function viewImage(url) {
+    const modal = document.getElementById('generalModal');
+    const modalBody = document.getElementById('generalModalBody');
+    const modalLabel = document.getElementById('generalModalLabel');
+
+    modalLabel.textContent = '查看图片';
+    modalBody.innerHTML = `
+        <div style="text-align: center;">
+            <img src="${escapeHtml(url)}" style="max-width: 100%; border-radius: 8px;" alt="笔记截图">
+        </div>
+    `;
+
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+/**
+ * 初始化笔记功能（在页面加载时调用）
+ */
+function initializeNotes() {
+    // 加载源码笔记
+    loadNotes('code');
+    // 加载讨论笔记
+    loadNotes('discussion');
+
+    // 监听图片选择事件
+    const imageInput = document.getElementById('noteImageInput');
+    if (imageInput) {
+        imageInput.addEventListener('change', () => {
+            renderImagePreview();
+        });
+    }
 }
