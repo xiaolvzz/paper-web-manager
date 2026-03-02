@@ -39,6 +39,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     checkContentStatus();
     // 初始化笔记功能
     initializeNotes();
+    // 加载论文标签
+    await loadPaperTags();
 });
 
 // 加载论文详情
@@ -2040,5 +2042,238 @@ function initializeNotes() {
         imageInput.addEventListener('change', () => {
             renderImagePreview();
         });
+    }
+}
+
+// ==================== 论文标签管理 ====================
+
+// 全局标签数据
+let allAvailableTags = [];
+let currentPaperTags = [];
+
+/**
+ * 加载所有可用标签
+ */
+async function loadAllTags() {
+    try {
+        const response = await fetch('/api/tags/domains');
+        if (!response.ok) throw new Error('加载标签失败');
+        allAvailableTags = await response.json();
+    } catch (error) {
+        console.error('加载标签失败:', error);
+    }
+}
+
+/**
+ * 加载论文当前标签
+ */
+async function loadPaperTags() {
+    try {
+        const response = await fetch(`/api/tags/paper/${currentPaperId}/domains`);
+        if (!response.ok) throw new Error('加载论文标签失败');
+        currentPaperTags = await response.json();
+        renderPaperTagsDisplay();
+    } catch (error) {
+        console.error('加载论文标签失败:', error);
+        currentPaperTags = [];
+        renderPaperTagsDisplay();
+    }
+}
+
+/**
+ * 渲染论文标签显示区域
+ */
+function renderPaperTagsDisplay() {
+    const container = document.getElementById('paperTagsDisplay');
+    if (!container) return;
+
+    if (currentPaperTags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无标签</span>';
+        return;
+    }
+
+    container.innerHTML = currentPaperTags.map(tag => `
+        <span class="badge" style="background-color: ${tag.color}; font-size: 0.9rem; padding: 6px 12px;">
+            ${tag.icon} ${tag.name}
+        </span>
+    `).join('');
+}
+
+/**
+ * 打开标签编辑器
+ */
+async function openPaperTagEditor() {
+    // 加载所有可用标签
+    await loadAllTags();
+    await loadPaperTags();
+
+    // 渲染当前标签
+    renderCurrentPaperTagsInModal();
+    // 渲染可用标签列表
+    renderExistingTagsList();
+
+    const modal = new bootstrap.Modal(document.getElementById('paperTagEditorModal'));
+    modal.show();
+}
+
+/**
+ * 渲染Modal中的当前标签
+ */
+function renderCurrentPaperTagsInModal() {
+    const container = document.getElementById('currentPaperTags');
+
+    if (currentPaperTags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无标签</span>';
+        return;
+    }
+
+    container.innerHTML = currentPaperTags.map(tag => `
+        <button class="tag-button removable"
+                style="border-color: ${tag.color}; color: ${tag.color}; background: white;">
+            ${tag.icon} ${tag.name}
+            <span class="remove-tag" onclick="removePaperTag(${tag.id}, event)">×</span>
+        </button>
+    `).join('');
+}
+
+/**
+ * 渲染现有标签列表
+ */
+function renderExistingTagsList() {
+    const container = document.getElementById('existingTagsList');
+
+    if (allAvailableTags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无可用标签</span>';
+        return;
+    }
+
+    // 过滤掉已经添加的标签
+    const currentTagIds = new Set(currentPaperTags.map(t => t.id));
+    const availableTags = allAvailableTags.filter(tag => !currentTagIds.has(tag.id));
+
+    if (availableTags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">所有标签已添加</span>';
+        return;
+    }
+
+    container.innerHTML = availableTags.map(tag => `
+        <button class="tag-button"
+                style="border-color: ${tag.color}; color: white; background: ${tag.color};"
+                onclick="addPaperTag(${tag.id})">
+            ${tag.icon} ${tag.name}
+        </button>
+    `).join('');
+}
+
+/**
+ * 添加标签到论文
+ */
+async function addPaperTag(domainId) {
+    try {
+        const response = await fetch('/api/tags/paper/add-domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                paper_id: currentPaperId,
+                domain_ids: [domainId]
+            })
+        });
+
+        if (!response.ok) throw new Error('添加标签失败');
+
+        showToast('✓ 标签已添加', 'success');
+
+        // 重新加载标签
+        await loadPaperTags();
+        renderCurrentPaperTagsInModal();
+        renderExistingTagsList();
+    } catch (error) {
+        console.error('添加标签失败:', error);
+        showToast('添加标签失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 移除论文标签
+ */
+async function removePaperTag(domainId, event) {
+    event.stopPropagation();
+
+    if (!confirm('确定要移除这个标签吗？')) return;
+
+    try {
+        const response = await fetch(`/api/tags/paper/remove-domain?paper_id=${currentPaperId}&domain_id=${domainId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('移除标签失败');
+
+        showToast('✓ 标签已移除', 'success');
+
+        // 重新加载标签
+        await loadPaperTags();
+        renderCurrentPaperTagsInModal();
+        renderExistingTagsList();
+    } catch (error) {
+        console.error('移除标签失败:', error);
+        showToast('移除标签失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 创建新标签并添加到本论文
+ */
+async function createAndAddTag() {
+    const name = document.getElementById('newPaperTagName').value.trim();
+    const color = document.getElementById('newPaperTagColor').value;
+    const icon = document.getElementById('newPaperTagIcon').value.trim() || '🏷️';
+
+    if (!name) {
+        showToast('请输入标签名称', 'error');
+        return;
+    }
+
+    try {
+        // 1. 创建标签
+        const createResponse = await fetch('/api/tags/domains/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, color, icon })
+        });
+
+        if (!createResponse.ok) {
+            const error = await createResponse.json();
+            throw new Error(error.detail || '创建标签失败');
+        }
+
+        const newTag = await createResponse.json();
+
+        // 2. 添加到本论文
+        const addResponse = await fetch('/api/tags/paper/add-domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                paper_id: currentPaperId,
+                domain_ids: [newTag.id]
+            })
+        });
+
+        if (!addResponse.ok) throw new Error('添加标签失败');
+
+        showToast('✓ 标签创建成功并已添加', 'success');
+
+        // 清空输入
+        document.getElementById('newPaperTagName').value = '';
+        document.getElementById('newPaperTagColor').value = '#6366f1';
+        document.getElementById('newPaperTagIcon').value = '';
+
+        // 重新加载
+        await loadAllTags();
+        await loadPaperTags();
+        renderCurrentPaperTagsInModal();
+        renderExistingTagsList();
+    } catch (error) {
+        console.error('创建标签失败:', error);
+        showToast('创建标签失败: ' + error.message, 'error');
     }
 }

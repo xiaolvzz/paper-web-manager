@@ -39,6 +39,19 @@
             </div>
             <div id="paperInfo"></div>
 
+            <!-- 标签管理 -->
+            <div class="mt-4">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <label class="form-label fw-bold mb-0">🏷️ 论文标签</label>
+                    <button class="btn btn-sm btn-outline-primary" onclick="openPaperTagEditor()">
+                        ✏️ 编辑标签
+                    </button>
+                </div>
+                <div id="paperTagsDisplay" class="d-flex gap-2 flex-wrap">
+                    <span class="text-muted small">暂无标签</span>
+                </div>
+            </div>
+
             <!-- AI自动分析结果展示 -->
             <div id="autoAnalysisDisplay" class="mt-4" style="display: none;">
                 <div class="alert alert-info">
@@ -352,6 +365,63 @@
                 </div>
                 <div class="modal-body" id="generalModalBody">
                     <!-- 内容将动态插入 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 标签编辑Modal -->
+    <div class="modal fade" id="paperTagEditorModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🏷️ 编辑论文标签</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- 当前标签 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">当前标签</label>
+                        <div id="currentPaperTags" class="d-flex gap-2 flex-wrap">
+                            <span class="text-muted small">暂无标签</span>
+                        </div>
+                    </div>
+
+                    <!-- 快速添加：从现有标签选择 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">从现有标签添加</label>
+                        <div id="existingTagsList" class="d-flex gap-2 flex-wrap" style="max-height: 300px; overflow-y: auto;">
+                            <!-- 动态生成 -->
+                        </div>
+                    </div>
+
+                    <!-- 或者输入新标签 -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">✨ 创建新标签</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small">标签名称</label>
+                                    <input type="text" class="form-control" id="newPaperTagName" placeholder="例如：必读论文">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">颜色</label>
+                                    <input type="color" class="form-control form-control-color w-100" id="newPaperTagColor" value="#6366f1">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small">图标</label>
+                                    <input type="text" class="form-control" id="newPaperTagIcon" placeholder="⭐" maxlength="2">
+                                </div>
+                            </div>
+                            <button class="btn btn-success btn-sm mt-3" onclick="createAndAddTag()">
+                                ➕ 创建并添加到本论文
+                            </button>
+                            <small class="text-muted d-block mt-2">创建后该标签将可在所有论文中使用</small>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>

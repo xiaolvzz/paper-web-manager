@@ -707,7 +707,7 @@ body {
 
 /* 标签按钮样式 */
 .tag-button {
-    padding: 6px 12px;
+    padding: 6px 14px;
     border: 2px solid;
     border-radius: 20px;
     font-size: 0.85rem;
@@ -717,6 +717,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 5px;
+    line-height: 1.4;
 }
 
 .tag-button:hover {
@@ -731,26 +732,36 @@ body {
 
 .tag-button.removable {
     position: relative;
-    padding-right: 30px;
+    padding-right: 32px;
 }
 
 .tag-button .remove-tag {
     position: absolute;
-    right: 8px;
+    right: 6px;
     top: 50%;
     transform: translateY(-50%);
-    width: 18px;
-    height: 18px;
-    background: rgba(0, 0, 0, 0.2);
+    width: 20px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.25);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: bold;
     color: white;
     cursor: pointer;
+    line-height: 1;
 }
 
 .tag-button .remove-tag:hover {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(0, 0, 0, 0.5);
+    transform: translateY(-50%) scale(1.1);
+}
+
+/* 论文详情页标签显示 */
+#paperTagsDisplay .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }

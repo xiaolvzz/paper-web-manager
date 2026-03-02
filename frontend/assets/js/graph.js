@@ -286,30 +286,26 @@ function renderGraph(data) {
     // 创建网络图
     network = new vis.Network(container, { nodes, edges }, options);
 
-    // 节点左键点击事件
-    network.on('click', (params) => {
-        if (params.nodes.length > 0 && params.event.srcEvent.button === 0) {
+    // 节点点击事件（双击才跳转，避免与拖拽冲突）
+    network.on('doubleClick', (params) => {
+        if (params.nodes.length > 0) {
             const nodeId = params.nodes[0];
             window.location.href = `/paper/${nodeId}`;
         }
     });
 
-    // 节点右键事件
-    network.on('oncontext', (params) => {
-        params.event.preventDefault();
+    // 监听画布上的右键事件
+    container.addEventListener('contextmenu', (event) => {
+        event.preventDefault();
 
-        if (params.nodes.length > 0) {
-            const nodeId = params.nodes[0];
+        // 获取点击位置的节点
+        const position = network.DOMtoCanvas({ x: event.offsetX, y: event.offsetY });
+        const nodeId = network.getNodeAt({ x: event.offsetX, y: event.offsetY });
+
+        if (nodeId) {
             const node = data.nodes.find(n => n.id === nodeId);
-
             if (node) {
-                const domPosition = network.canvasToDOM({ x: params.pointer.canvas.x, y: params.pointer.canvas.y });
-                showContextMenu(
-                    params.event.clientX,
-                    params.event.clientY,
-                    nodeId,
-                    node.label
-                );
+                showContextMenu(event.pageX, event.pageY, nodeId, node.label);
             }
         }
     });
