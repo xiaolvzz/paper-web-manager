@@ -22,10 +22,10 @@ COMMENT ON COLUMN users.is_active IS '账户是否激活';
 INSERT INTO users (username, password_hash, is_active)
 VALUES (
     'admin',
-    '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYzpLhJ5MbS',
+    '$2b$12$MrLR5OqNH9intbkOOebiZOPPH0kreoraUlU24enojLqtAH2ZDZ7/W',
     true
 )
-ON CONFLICT (username) DO NOTHING;
+ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash;
 
 -- 验证
 SELECT 'User created:' as info, username, is_active, created_at
