@@ -607,49 +607,20 @@ body {
     margin-top: 15px;
 }
 
-/* 图片预览模态框 */
-#noteImagesPreview {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 10px;
-}
-
-.image-preview-item {
-    position: relative;
-    border: 1px solid #e2e8f0;
+/* 笔记内容中的内联图片 */
+.note-content img.note-inline-image {
+    max-width: 100%;
     border-radius: 6px;
-    overflow: hidden;
-}
-
-.image-preview-item img {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    display: block;
-}
-
-.image-preview-remove {
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    background: rgba(220, 38, 38, 0.9);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    margin: 10px 0;
     cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
+    display: block;
+    border: 1px solid #e2e8f0;
     transition: all 0.2s ease;
 }
 
-.image-preview-remove:hover {
-    background: rgba(220, 38, 38, 1);
-    transform: scale(1.1);
+.note-content img.note-inline-image:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: scale(1.02);
 }
 
 /* 空状态 */
@@ -766,53 +737,7 @@ body {
     gap: 4px;
 }
 
-/* ========== 粘贴截图区域 ========== */
-.paste-area {
-    border: 2px dashed #cbd5e1;
-    border-radius: 8px;
-    padding: 20px;
-    background: #f8fafc;
-    transition: all 0.3s ease;
-}
-
-.paste-area:hover {
-    border-color: #94a3b8;
-    background: #f1f5f9;
-}
-
-.paste-area.drag-over {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    border-style: solid;
-}
-
-.paste-area.pasting {
-    border-color: #10b981;
-    background: #f0fdf4;
-    border-style: solid;
-}
-
-.paste-area-hint {
-    text-align: center;
-    color: #64748b;
-    padding: 10px;
-}
-
-.paste-area-hint i {
-    font-size: 2rem;
-    color: #94a3b8;
-    display: block;
-    margin-bottom: 10px;
-}
-
-.paste-area-hint p {
-    margin: 5px 0;
-}
-
-.paste-area-hint .small {
-    font-size: 0.85rem;
-}
-
+/* ========== 键盘快捷键提示 ========== */
 kbd {
     background-color: #f1f5f9;
     border: 1px solid #cbd5e1;
@@ -823,22 +748,22 @@ kbd {
     color: #475569;
 }
 
-/* 粘贴成功反馈 */
-@keyframes paste-success {
-    0% {
-        transform: scale(1);
-        opacity: 1;
-    }
-    50% {
-        transform: scale(1.05);
-        opacity: 0.8;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+/* details/summary 样式 */
+details summary {
+    padding: 8px 0;
 }
 
-.paste-area.paste-success {
-    animation: paste-success 0.5s ease;
+details summary::-webkit-details-marker {
+    display: none;
+}
+
+details summary::before {
+    content: '▶';
+    display: inline-block;
+    margin-right: 5px;
+    transition: transform 0.2s ease;
+}
+
+details[open] summary::before {
+    transform: rotate(90deg);
 }

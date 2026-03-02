@@ -452,29 +452,30 @@
 
                         <!-- 内容/理解 -->
                         <div class="mb-3">
-                            <label for="noteContent" class="form-label">内容/理解</label>
-                            <textarea class="form-control" id="noteContent" rows="8" placeholder="记录你的理解、想法、疑问等..."></textarea>
+                            <label for="noteContent" class="form-label">
+                                内容/理解
+                                <span class="badge bg-info ms-2" style="font-size: 0.7rem;">支持Markdown</span>
+                            </label>
+                            <textarea class="form-control" id="noteContent" rows="12" placeholder="记录你的理解、想法、疑问等...
+
+💡 提示：直接在这里按 Ctrl+V 粘贴截图，图片会插入到光标位置"></textarea>
+                            <small class="text-muted d-block mt-2">
+                                <strong>快捷操作：</strong>
+                                在内容中 <kbd>Ctrl+V</kbd> 或 <kbd>Cmd+V</kbd> 直接粘贴截图，图片会自动上传并插入到当前位置
+                            </small>
                         </div>
 
-                        <!-- 截图区域 -->
+                        <!-- 附加图片上传（可选） -->
                         <div class="mb-3">
-                            <label class="form-label">截图</label>
-                            <div class="paste-area" id="notePasteArea">
-                                <div class="paste-area-hint">
-                                    <i class="bi bi-image"></i>
-                                    <p>📋 <strong>直接粘贴截图</strong> (Ctrl+V / Cmd+V)</p>
-                                    <p class="small text-muted">或者点击下方按钮选择文件</p>
+                            <details>
+                                <summary class="text-muted" style="cursor: pointer; user-select: none;">
+                                    <small>或者从文件选择器上传图片</small>
+                                </summary>
+                                <div class="mt-2">
+                                    <input type="file" class="form-control form-control-sm" id="noteImageInput" accept="image/*" multiple>
+                                    <small class="text-muted">选择后图片会添加到内容末尾</small>
                                 </div>
-                                <input type="file" class="form-control mt-2" id="noteImageInput" accept="image/*" multiple>
-                            </div>
-                            <small class="text-muted d-block mt-2">
-                                💡 提示：按 <kbd>Ctrl+V</kbd> (Windows) 或 <kbd>Cmd+V</kbd> (Mac) 直接粘贴截图
-                            </small>
-
-                            <!-- 已上传的图片预览 -->
-                            <div id="noteImagesPreview" class="mt-3">
-                                <!-- 图片预览将显示在这里 -->
-                            </div>
+                            </details>
                         </div>
                     </form>
                 </div>

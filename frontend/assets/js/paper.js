@@ -1716,9 +1716,6 @@ let currentNotes = {
 // 当前编辑的笔记
 let currentEditingNote = null;
 
-// 临时存储的图片URLs（用于编辑时）
-let tempImageUrls = [];
-
 /**
  * 加载笔记列表
  */
@@ -1759,6 +1756,9 @@ function renderNotes(noteType) {
         const updatedDate = new Date(note.updated_at).toLocaleString('zh-CN');
         const hasImages = note.images && note.images.length > 0;
 
+        // 渲染内容（支持Markdown图片）
+        const renderedContent = renderNoteContent(note.content);
+
         return `
             <div class="note-card" id="note-${note.id}">
                 <div class="note-card-header" onclick="toggleNoteCollapse(${note.id})">
@@ -1773,7 +1773,7 @@ function renderNotes(noteType) {
                     <span class="note-collapse-icon">▼</span>
                 </div>
                 <div class="note-card-body">
-                    ${note.content ? `<div class="note-content">${escapeHtml(note.content)}</div>` : '<div class="note-content"></div>'}
+                    ${renderedContent ? `<div class="note-content">${renderedContent}</div>` : '<div class="note-content"></div>'}
 
                     ${hasImages ? `
                         <div class="note-images">
@@ -1796,6 +1796,29 @@ function renderNotes(noteType) {
 }
 
 /**
+ * 渲染笔记内容（支持Markdown图片）
+ */
+function renderNoteContent(content) {
+    if (!content) return '';
+
+    // 转义HTML以防止XSS
+    let escaped = escapeHtml(content);
+
+    // 渲染Markdown图片：![alt](url) -> <img>
+    escaped = escaped.replace(
+        /!\[([^\]]*)\]\(([^)]+)\)/g,
+        (match, alt, url) => {
+            return `<img src="${url}" alt="${alt}" class="note-inline-image" onclick="viewImage('${url}')" style="max-width: 100%; border-radius: 6px; margin: 10px 0; cursor: pointer; display: block;">`;
+        }
+    );
+
+    // 渲染换行
+    escaped = escaped.replace(/\n/g, '<br>');
+
+    return escaped;
+}
+
+/**
  * 切换笔记展开/折叠
  */
 function toggleNoteCollapse(noteId) {
@@ -1810,15 +1833,15 @@ function toggleNoteCollapse(noteId) {
  */
 function addNewNote(noteType) {
     currentEditingNote = null;
-    tempImageUrls = [];
 
     document.getElementById('noteEditorTitle').textContent = '新建笔记';
     document.getElementById('noteId').value = '';
     document.getElementById('noteType').value = noteType;
     document.getElementById('noteTitle').value = '';
     document.getElementById('noteContent').value = '';
-    document.getElementById('noteImagesPreview').innerHTML = '';
-    document.getElementById('noteImageInput').value = '';
+
+    const imageInput = document.getElementById('noteImageInput');
+    if (imageInput) imageInput.value = '';
 
     const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
     modal.show();
@@ -1838,16 +1861,12 @@ function editNote(noteId, noteType) {
     }
 
     currentEditingNote = note;
-    tempImageUrls = [...(note.images || [])];
 
     document.getElementById('noteEditorTitle').textContent = '编辑笔记';
     document.getElementById('noteId').value = note.id;
     document.getElementById('noteType').value = noteType;
     document.getElementById('noteTitle').value = note.title;
     document.getElementById('noteContent').value = note.content || '';
-
-    // 显示已有图片
-    renderImagePreview();
 
     const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
     modal.show();
@@ -1873,6 +1892,9 @@ async function saveNote() {
     showSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存中...');
 
     try {
+        // 从content中提取图片URL（用于向后兼容）
+        const imageUrls = extractImageUrls(content);
+
         let response;
 
         if (noteId) {
@@ -1883,7 +1905,7 @@ async function saveNote() {
                 body: JSON.stringify({
                     title,
                     content: content || null,
-                    images: tempImageUrls
+                    images: imageUrls
                 })
             });
         } else {
@@ -1896,7 +1918,7 @@ async function saveNote() {
                     note_type: noteType,
                     title,
                     content: content || null,
-                    images: tempImageUrls
+                    images: imageUrls
                 })
             });
         }
@@ -1923,6 +1945,23 @@ async function saveNote() {
 }
 
 /**
+ * 从Markdown内容中提取图片URL
+ */
+function extractImageUrls(content) {
+    if (!content) return [];
+
+    const imageRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const urls = [];
+    let match;
+
+    while ((match = imageRegex.exec(content)) !== null) {
+        urls.push(match[2]);
+    }
+
+    return urls;
+}
+
+/**
  * 上传单张图片
  */
 async function uploadNoteImage(file) {
@@ -1943,32 +1982,6 @@ async function uploadNoteImage(file) {
     return data.url;
 }
 
-/**
- * 渲染图片预览
- */
-function renderImagePreview() {
-    const container = document.getElementById('noteImagesPreview');
-
-    if (tempImageUrls.length === 0) {
-        container.innerHTML = '';
-        return;
-    }
-
-    container.innerHTML = tempImageUrls.map((url, index) => `
-        <div class="image-preview-item">
-            <img src="${escapeHtml(url)}" alt="预览">
-            <button class="image-preview-remove" onclick="removeImagePreview(${index})" type="button">×</button>
-        </div>
-    `).join('');
-}
-
-/**
- * 删除图片预览
- */
-function removeImagePreview(index) {
-    tempImageUrls.splice(index, 1);
-    renderImagePreview();
-}
 
 /**
  * 删除笔记
@@ -2022,74 +2035,78 @@ function initializeNotes() {
     loadNotes('code');
     // 加载讨论笔记
     loadNotes('discussion');
-
-    // 监听图片选择事件
-    const imageInput = document.getElementById('noteImageInput');
-    if (imageInput) {
-        imageInput.addEventListener('change', async () => {
-            // 处理文件选择
-            const files = imageInput.files;
-            if (files.length > 0) {
-                await handleImageFiles(files);
-                // 清空input以便可以重复选择同一文件
-                imageInput.value = '';
-            }
-        });
-    }
 }
 
 /**
  * 初始化粘贴监听器
  */
 function initializePasteListener() {
-    const modal = document.getElementById('noteEditorModal');
-    const pasteArea = document.getElementById('notePasteArea');
+    const noteContent = document.getElementById('noteContent');
+    const imageInput = document.getElementById('noteImageInput');
 
-    if (!modal || !pasteArea) return;
+    if (!noteContent) return;
 
     // 移除旧的监听器（如果存在）
-    modal.removeEventListener('paste', handlePaste);
+    noteContent.removeEventListener('paste', handleContentPaste);
 
-    // 添加粘贴监听器到整个modal
-    modal.addEventListener('paste', handlePaste);
+    // 添加粘贴监听器到内容textarea
+    noteContent.addEventListener('paste', handleContentPaste);
 
-    // 添加拖拽监听器
-    pasteArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        pasteArea.classList.add('drag-over');
-    });
-
-    pasteArea.addEventListener('dragleave', (e) => {
-        e.preventDefault();
-        pasteArea.classList.remove('drag-over');
-    });
-
-    pasteArea.addEventListener('drop', async (e) => {
-        e.preventDefault();
-        pasteArea.classList.remove('drag-over');
-
-        const files = Array.from(e.dataTransfer.files).filter(file =>
-            file.type.startsWith('image/')
-        );
-
-        if (files.length > 0) {
-            pasteArea.classList.add('pasting');
-            await handleImageFiles(files);
-            pasteArea.classList.remove('pasting');
-            pasteArea.classList.add('paste-success');
-            setTimeout(() => pasteArea.classList.remove('paste-success'), 500);
-        }
-    });
+    // 文件选择器：将图片添加到内容末尾
+    if (imageInput) {
+        imageInput.removeEventListener('change', handleFileSelect);
+        imageInput.addEventListener('change', handleFileSelect);
+    }
 }
 
 /**
- * 处理粘贴事件
+ * 处理文件选择
  */
-async function handlePaste(e) {
+async function handleFileSelect(e) {
+    const files = e.target.files;
+    if (files.length === 0) return;
+
+    const noteContent = document.getElementById('noteContent');
+    const uploadedUrls = [];
+
+    showToast('正在上传图片...', 'info');
+
+    for (let file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 5 * 1024 * 1024) {
+            showToast(`${file.name} 超过5MB`, 'error');
+            continue;
+        }
+
+        try {
+            const url = await uploadNoteImage(file);
+            if (url) uploadedUrls.push(url);
+        } catch (error) {
+            console.error('上传失败:', error);
+        }
+    }
+
+    if (uploadedUrls.length > 0) {
+        // 在内容末尾添加图片
+        const currentContent = noteContent.value;
+        const newContent = currentContent + (currentContent ? '\n\n' : '') +
+            uploadedUrls.map(url => `![截图](${url})`).join('\n\n');
+        noteContent.value = newContent;
+        showToast(`✓ 已添加 ${uploadedUrls.length} 张图片`, 'success');
+    }
+
+    // 清空input
+    e.target.value = '';
+}
+
+/**
+ * 处理内容区域粘贴事件
+ */
+async function handleContentPaste(e) {
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    const pasteArea = document.getElementById('notePasteArea');
+    const noteContent = document.getElementById('noteContent');
     const imageFiles = [];
 
     // 提取粘贴的图片
@@ -2104,65 +2121,49 @@ async function handlePaste(e) {
         }
     }
 
-    // 如果有图片，上传并显示
+    // 如果有图片，上传并插入到光标位置
     if (imageFiles.length > 0) {
-        if (pasteArea) {
-            pasteArea.classList.add('pasting');
+        // 获取光标位置
+        const cursorPosition = noteContent.selectionStart;
+        const textBefore = noteContent.value.substring(0, cursorPosition);
+        const textAfter = noteContent.value.substring(cursorPosition);
+
+        // 显示上传提示
+        const uploadingText = `\n[上传图片中...]\n`;
+        noteContent.value = textBefore + uploadingText + textAfter;
+        noteContent.selectionStart = noteContent.selectionEnd = cursorPosition + uploadingText.length;
+
+        try {
+            // 上传所有图片
+            const uploadPromises = imageFiles.map(file => uploadNoteImage(file));
+            const uploadedUrls = await Promise.all(uploadPromises);
+
+            // 生成Markdown图片标记
+            const imageMarkdown = uploadedUrls
+                .filter(url => url)
+                .map(url => `![截图](${url})`)
+                .join('\n\n');
+
+            // 替换"上传中"文本为实际图片
+            const newContent = noteContent.value.replace(uploadingText, `\n${imageMarkdown}\n\n`);
+            noteContent.value = newContent;
+
+            // 设置光标到图片后面
+            const newCursorPos = cursorPosition + imageMarkdown.length + 3;
+            noteContent.selectionStart = noteContent.selectionEnd = newCursorPos;
+            noteContent.focus();
+
+            showToast(`✓ 已插入 ${uploadedUrls.length} 张图片`, 'success');
+        } catch (error) {
+            console.error('上传图片失败:', error);
+            // 移除"上传中"文本
+            noteContent.value = textBefore + textAfter;
+            noteContent.selectionStart = noteContent.selectionEnd = cursorPosition;
+            showToast('上传图片失败', 'error');
         }
-
-        await handleImageFiles(imageFiles);
-
-        if (pasteArea) {
-            pasteArea.classList.remove('pasting');
-            pasteArea.classList.add('paste-success');
-            setTimeout(() => pasteArea.classList.remove('paste-success'), 500);
-        }
-
-        showToast(`✓ 已粘贴 ${imageFiles.length} 张图片`, 'success');
     }
 }
 
-/**
- * 处理图片文件（统一处理上传和文件选择）
- */
-async function handleImageFiles(files) {
-    const uploadPromises = [];
-
-    for (let file of files) {
-        // 验证文件类型
-        if (!file.type.startsWith('image/')) {
-            showToast(`文件 ${file.name} 不是图片格式`, 'error');
-            continue;
-        }
-
-        // 验证文件大小（5MB）
-        if (file.size > 5 * 1024 * 1024) {
-            showToast(`图片 ${file.name} 超过5MB`, 'error');
-            continue;
-        }
-
-        // 上传图片
-        uploadPromises.push(uploadNoteImage(file));
-    }
-
-    // 等待所有图片上传完成
-    try {
-        const uploadedUrls = await Promise.all(uploadPromises);
-
-        // 添加到临时图片列表
-        uploadedUrls.forEach(url => {
-            if (url) {
-                tempImageUrls.push(url);
-            }
-        });
-
-        // 更新预览
-        renderImagePreview();
-    } catch (error) {
-        console.error('上传图片失败:', error);
-        showToast('部分图片上传失败', 'error');
-    }
-}
 
 // ==================== 论文标签管理 ====================
 
