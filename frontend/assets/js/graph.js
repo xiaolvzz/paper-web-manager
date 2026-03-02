@@ -6,12 +6,20 @@ let network = null;
 let currentData = null;
 let currentFilters = {
     domain: null,
-    relationType: null
+    relationType: null,
+    tag: null
 };
+
+// 全局数据
+let allDomains = [];
+let selectedNodeId = null;
+let selectedNodeTitle = '';
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadAllDomains();
     await loadGraph();
+    initContextMenu();
 });
 
 // 加载关系图数据
@@ -278,11 +286,31 @@ function renderGraph(data) {
     // 创建网络图
     network = new vis.Network(container, { nodes, edges }, options);
 
-    // 节点点击事件
+    // 节点左键点击事件
     network.on('click', (params) => {
-        if (params.nodes.length > 0) {
+        if (params.nodes.length > 0 && params.event.srcEvent.button === 0) {
             const nodeId = params.nodes[0];
             window.location.href = `/paper/${nodeId}`;
+        }
+    });
+
+    // 节点右键事件
+    network.on('oncontext', (params) => {
+        params.event.preventDefault();
+
+        if (params.nodes.length > 0) {
+            const nodeId = params.nodes[0];
+            const node = data.nodes.find(n => n.id === nodeId);
+
+            if (node) {
+                const domPosition = network.canvasToDOM({ x: params.pointer.canvas.x, y: params.pointer.canvas.y });
+                showContextMenu(
+                    params.event.clientX,
+                    params.event.clientY,
+                    nodeId,
+                    node.label
+                );
+            }
         }
     });
 
@@ -363,5 +391,305 @@ function resetZoom() {
                 easingFunction: 'easeInOutQuad'
             }
         });
+    }
+}
+
+// ==================== 标签管理功能 ====================
+
+/**
+ * 加载所有领域标签
+ */
+async function loadAllDomains() {
+    try {
+        const response = await fetch('/api/tags/domains');
+        if (!response.ok) throw new Error('加载标签失败');
+
+        allDomains = await response.json();
+        renderTagsQuickFilter();
+    } catch (error) {
+        console.error('加载标签失败:', error);
+    }
+}
+
+/**
+ * 渲染标签快速筛选面板
+ */
+function renderTagsQuickFilter() {
+    const container = document.getElementById('tagsQuickFilter');
+    if (!container) return;
+
+    if (allDomains.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无标签</span>';
+        return;
+    }
+
+    container.innerHTML = allDomains.map(domain => {
+        const isActive = currentFilters.tag === domain.id;
+        const activeClass = isActive ? 'active' : '';
+        const bgColor = isActive ? domain.color : 'white';
+        const textColor = isActive ? 'white' : domain.color;
+
+        return `
+            <button class="tag-button ${activeClass}"
+                    style="border-color: ${domain.color}; color: ${textColor}; background: ${bgColor};"
+                    onclick="filterByTag(${domain.id}, '${domain.name}')">
+                ${domain.icon} ${domain.name}
+            </button>
+        `;
+    }).join('');
+}
+
+/**
+ * 按标签筛选
+ */
+function filterByTag(tagId, tagName) {
+    if (currentFilters.tag === tagId) {
+        // 取消筛选
+        currentFilters.tag = null;
+    } else {
+        // 应用筛选
+        currentFilters.tag = tagId;
+    }
+
+    renderTagsQuickFilter();
+    applyTagFilter();
+}
+
+/**
+ * 应用标签筛选（前端过滤）
+ */
+function applyTagFilter() {
+    if (!network || !currentData) return;
+
+    if (!currentFilters.tag) {
+        // 显示所有节点
+        currentData.nodes.forEach(node => {
+            network.body.nodes[node.id].options.hidden = false;
+        });
+    } else {
+        // 只显示包含该标签的节点
+        currentData.nodes.forEach(node => {
+            const hasDomain = node.domains && node.domains.some(d => d.id === currentFilters.tag);
+            network.body.nodes[node.id].options.hidden = !hasDomain;
+        });
+    }
+
+    network.redraw();
+}
+
+/**
+ * 清除标签筛选
+ */
+function clearTagFilter() {
+    currentFilters.tag = null;
+    renderTagsQuickFilter();
+    applyTagFilter();
+}
+
+/**
+ * 初始化右键菜单
+ */
+function initContextMenu() {
+    const contextMenu = document.getElementById('contextMenu');
+
+    // 隐藏右键菜单当点击其他地方
+    document.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+    });
+
+    // 阻止默认右键菜单
+    document.getElementById('graph-container').addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+    });
+}
+
+/**
+ * 显示右键菜单
+ */
+function showContextMenu(x, y, nodeId, nodeTitle) {
+    const contextMenu = document.getElementById('contextMenu');
+    selectedNodeId = nodeId;
+    selectedNodeTitle = nodeTitle;
+
+    contextMenu.style.display = 'block';
+    contextMenu.style.left = x + 'px';
+    contextMenu.style.top = y + 'px';
+}
+
+/**
+ * 打开标签管理器
+ */
+async function openTagManager() {
+    if (!selectedNodeId) return;
+
+    document.getElementById('tagManagerPaperId').value = selectedNodeId;
+    document.getElementById('tagManagerPaperTitle').textContent = selectedNodeTitle;
+
+    // 加载论文当前标签
+    await loadPaperTags(selectedNodeId);
+
+    // 渲染可用标签列表
+    renderAvailableTags();
+
+    const modal = new bootstrap.Modal(document.getElementById('tagManagerModal'));
+    modal.show();
+}
+
+/**
+ * 查看论文详情
+ */
+function viewPaperDetails() {
+    if (selectedNodeId) {
+        window.location.href = `/paper/${selectedNodeId}`;
+    }
+}
+
+/**
+ * 加载论文的标签
+ */
+async function loadPaperTags(paperId) {
+    try {
+        const response = await fetch(`/api/tags/paper/${paperId}/domains`);
+        if (!response.ok) throw new Error('加载标签失败');
+
+        const tags = await response.json();
+        renderCurrentTags(tags);
+    } catch (error) {
+        console.error('加载论文标签失败:', error);
+        showToast('加载标签失败', 'error');
+    }
+}
+
+/**
+ * 渲染当前标签
+ */
+function renderCurrentTags(tags) {
+    const container = document.getElementById('currentTagsList');
+
+    if (tags.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无标签</span>';
+        return;
+    }
+
+    container.innerHTML = tags.map(tag => `
+        <button class="tag-button removable"
+                style="border-color: ${tag.color}; color: ${tag.color}; background: white;">
+            ${tag.icon} ${tag.name}
+            <span class="remove-tag" onclick="removeTag(${tag.id}, event)">×</span>
+        </button>
+    `).join('');
+}
+
+/**
+ * 渲染可用标签列表
+ */
+function renderAvailableTags() {
+    const container = document.getElementById('availableTagsList');
+    const paperId = document.getElementById('tagManagerPaperId').value;
+
+    if (allDomains.length === 0) {
+        container.innerHTML = '<span class="text-muted small">暂无可用标签</span>';
+        return;
+    }
+
+    container.innerHTML = allDomains.map(domain => `
+        <button class="tag-button"
+                style="border-color: ${domain.color}; color: white; background: ${domain.color};"
+                onclick="addTag(${paperId}, ${domain.id})">
+            ${domain.icon} ${domain.name}
+        </button>
+    `).join('');
+}
+
+/**
+ * 添加标签
+ */
+async function addTag(paperId, domainId) {
+    try {
+        const response = await fetch('/api/tags/paper/add-domains', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                paper_id: parseInt(paperId),
+                domain_ids: [domainId]
+            })
+        });
+
+        if (!response.ok) throw new Error('添加标签失败');
+
+        showToast('✓ 标签已添加', 'success');
+        await loadPaperTags(paperId);
+        await loadGraph(currentFilters.domain, currentFilters.relationType); // 重新加载图以更新节点颜色
+    } catch (error) {
+        console.error('添加标签失败:', error);
+        showToast('添加标签失败', 'error');
+    }
+}
+
+/**
+ * 移除标签
+ */
+async function removeTag(domainId, event) {
+    event.stopPropagation();
+
+    const paperId = document.getElementById('tagManagerPaperId').value;
+
+    if (!confirm('确定要移除这个标签吗？')) return;
+
+    try {
+        const response = await fetch(`/api/tags/paper/remove-domain?paper_id=${paperId}&domain_id=${domainId}`, {
+            method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('移除标签失败');
+
+        showToast('✓ 标签已移除', 'success');
+        await loadPaperTags(paperId);
+        await loadGraph(currentFilters.domain, currentFilters.relationType); // 重新加载图
+    } catch (error) {
+        console.error('移除标签失败:', error);
+        showToast('移除标签失败', 'error');
+    }
+}
+
+/**
+ * 创建自定义标签
+ */
+async function createCustomTag() {
+    const name = document.getElementById('newTagName').value.trim();
+    const color = document.getElementById('newTagColor').value;
+    const icon = document.getElementById('newTagIcon').value.trim() || '🏷️';
+
+    if (!name) {
+        showToast('请输入标签名称', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/tags/domains/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                color,
+                icon
+            })
+        });
+
+        if (!response.ok) throw new Error('创建标签失败');
+
+        showToast('✓ 自定义标签创建成功', 'success');
+
+        // 清空输入
+        document.getElementById('newTagName').value = '';
+        document.getElementById('newTagColor').value = '#6366f1';
+        document.getElementById('newTagIcon').value = '';
+
+        // 重新加载标签列表
+        await loadAllDomains();
+        renderAvailableTags();
+    } catch (error) {
+        console.error('创建标签失败:', error);
+        showToast('创建标签失败: ' + error.message, 'error');
     }
 }

@@ -47,6 +47,23 @@
             </div>
         </div>
 
+        <!-- 标签快速选择面板 -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body py-2">
+                        <div class="d-flex gap-2 align-items-center flex-wrap">
+                            <strong class="text-muted small">🏷️ 标签筛选:</strong>
+                            <div id="tagsQuickFilter" class="d-flex gap-2 flex-wrap">
+                                <!-- 动态生成标签按钮 -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearTagFilter()">清除</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- 筛选器和图例 -->
         <div class="row mb-3">
             <div class="col-md-6">
@@ -133,6 +150,73 @@
                     <button type="button" class="btn btn-primary" onclick="applyModalFilters()" data-bs-dismiss="modal">应用</button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 标签管理模态框 -->
+    <div class="modal fade" id="tagManagerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">🏷️ 管理标签</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="tagManagerPaperId">
+
+                    <h6 class="mb-3">论文：<span id="tagManagerPaperTitle" class="text-primary"></span></h6>
+
+                    <!-- 当前标签 -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">当前标签</label>
+                        <div id="currentTagsList" class="d-flex gap-2 flex-wrap">
+                            <span class="text-muted small">暂无标签</span>
+                        </div>
+                    </div>
+
+                    <!-- 添加标签 -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">添加标签</label>
+                        <div id="availableTagsList" class="d-flex gap-2 flex-wrap" style="max-height: 300px; overflow-y: auto;">
+                            <!-- 动态生成可用标签 -->
+                        </div>
+                    </div>
+
+                    <!-- 创建自定义标签 -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">创建自定义标签</h6>
+                            <div class="row g-2">
+                                <div class="col-md-5">
+                                    <input type="text" class="form-control form-control-sm" id="newTagName" placeholder="标签名称">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="color" class="form-control form-control-sm" id="newTagColor" value="#6366f1">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" class="form-control form-control-sm" id="newTagIcon" placeholder="🏷️" maxlength="2">
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-sm btn-success w-100" onclick="createCustomTag()">创建</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div id="contextMenu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" onclick="openTagManager()">
+            🏷️ 管理标签
+        </div>
+        <div class="context-menu-item" onclick="viewPaperDetails()">
+            📖 查看详情
         </div>
     </div>
 
