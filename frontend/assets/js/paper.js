@@ -8,6 +8,74 @@ let currentRelations = [];
 let allPapers = [];
 let currentPaperId = null;
 
+// ========== 工具函数 ==========
+
+/**
+ * 显示加载状态
+ * @param {string} spinnerId - spinner元素的ID
+ * @param {string} textId - 文本元素的ID
+ * @param {string} loadingText - 加载时显示的文本
+ */
+function showSpinner(spinnerId, textId, loadingText = '加载中...') {
+    const spinner = document.getElementById(spinnerId);
+    const text = document.getElementById(textId);
+    if (spinner) spinner.classList.remove('d-none');
+    if (text) text.textContent = loadingText;
+}
+
+/**
+ * 隐藏加载状态
+ * @param {string} spinnerId - spinner元素的ID
+ * @param {string} textId - 文本元素的ID
+ * @param {string} normalText - 正常状态显示的文本
+ */
+function hideSpinner(spinnerId, textId, normalText = '保存') {
+    const spinner = document.getElementById(spinnerId);
+    const text = document.getElementById(textId);
+    if (spinner) spinner.classList.add('d-none');
+    if (text) text.textContent = normalText;
+}
+
+/**
+ * 显示加载状态（带按钮禁用）
+ */
+function showLoading(textId, spinnerId, loadingText = '加载中...') {
+    const text = document.getElementById(textId);
+    const spinner = document.getElementById(spinnerId);
+    if (text) text.textContent = loadingText;
+    if (spinner) spinner.classList.remove('d-none');
+}
+
+/**
+ * 显示成功状态
+ */
+function showSuccess(textId, spinnerId, successText = '成功', normalText = '保存') {
+    const text = document.getElementById(textId);
+    const spinner = document.getElementById(spinnerId);
+    if (text) text.textContent = successText;
+    if (spinner) spinner.classList.add('d-none');
+
+    // 1.5秒后恢复正常文本
+    setTimeout(() => {
+        if (text) text.textContent = normalText;
+    }, 1500);
+}
+
+/**
+ * 显示错误状态
+ */
+function showError(textId, spinnerId, errorText = '失败', normalText = '保存') {
+    const text = document.getElementById(textId);
+    const spinner = document.getElementById(spinnerId);
+    if (text) text.textContent = errorText;
+    if (spinner) spinner.classList.add('d-none');
+
+    // 2秒后恢复正常文本
+    setTimeout(() => {
+        if (text) text.textContent = normalText;
+    }, 2000);
+}
+
 // 获取URL中的论文ID
 function getPaperId() {
     const path = window.location.pathname;
