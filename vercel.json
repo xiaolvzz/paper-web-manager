@@ -5,6 +5,10 @@
       "destination": "/api/index"
     },
     {
+      "source": "/login",
+      "destination": "/frontend/login.html"
+    },
+    {
       "source": "/",
       "destination": "/frontend/index.html"
     },
