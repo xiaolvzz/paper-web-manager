@@ -1179,12 +1179,10 @@ function openSourceCode() {
 function loadCodeInfo() {
     if (!currentPaper) return;
 
-    const sourceCodeUrl = document.getElementById('sourceCodeUrl');
-    const codeOverview = document.getElementById('codeOverview');
-    const noCodeHint = document.getElementById('noCodeHint');
+    const sourceCodeUrlElem = document.getElementById('sourceCodeUrl');
 
     // 如果元素不存在，直接返回（可能此部分UI已移除）
-    if (!sourceCodeUrl || !codeOverview || !noCodeHint) {
+    if (!sourceCodeUrlElem) {
         return;
     }
 
@@ -1192,18 +1190,14 @@ function loadCodeInfo() {
     const codeUrl = currentPaper.source_code_url || currentPaper.github_url;
 
     if (codeUrl) {
-        sourceCodeUrl.value = codeUrl;
-        codeOverview.style.display = 'block';
-        noCodeHint.style.display = 'none';
+        sourceCodeUrlElem.value = codeUrl;
 
         // 如果是GitHub链接，尝试获取仓库信息
         if (codeUrl.includes('github.com')) {
             fetchGitHubRepoInfo(codeUrl);
         }
     } else {
-        sourceCodeUrl.value = '';
-        codeOverview.style.display = 'none';
-        noCodeHint.style.display = 'block';
+        sourceCodeUrlElem.value = '';
     }
 }
 
@@ -1225,18 +1219,27 @@ async function fetchGitHubRepoInfo(githubUrl) {
         const repoData = await response.json();
 
         // 显示仓库信息
-        const codeRepoInfo = document.getElementById('codeRepoInfo');
-        codeRepoInfo.innerHTML = `
-            <p><strong>仓库名:</strong> ${escapeHtml(repoData.name)}</p>
-            <p><strong>描述:</strong> ${escapeHtml(repoData.description || '无')}</p>
-            <p><strong>⭐ Stars:</strong> ${repoData.stargazers_count} |
-               <strong>🍴 Forks:</strong> ${repoData.forks_count}</p>
-            <p><strong>语言:</strong> ${escapeHtml(repoData.language || '未知')}</p>
-            <p><strong>最后更新:</strong> ${new Date(repoData.updated_at).toLocaleDateString('zh-CN')}</p>
-        `;
-
-        // 获取README
-        fetchGitHubReadme(owner, cleanRepo);
+        const githubRepoInfo = document.getElementById('githubRepoInfo');
+        if (githubRepoInfo) {
+            githubRepoInfo.style.display = 'block';
+            githubRepoInfo.innerHTML = `
+                <div class="card">
+                    <div class="card-body">
+                        <h6 class="card-title">📦 ${escapeHtml(repoData.name)}</h6>
+                        <p class="card-text small">${escapeHtml(repoData.description || '无描述')}</p>
+                        <div class="d-flex gap-3 small text-muted">
+                            <span>⭐ ${repoData.stargazers_count}</span>
+                            <span>🍴 ${repoData.forks_count}</span>
+                            <span>📝 ${escapeHtml(repoData.language || '未知')}</span>
+                            <span>🕐 ${new Date(repoData.updated_at).toLocaleDateString('zh-CN')}</span>
+                        </div>
+                        <a href="${githubUrl}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                            在GitHub中打开 →
+                        </a>
+                    </div>
+                </div>
+            `;
+        }
 
     } catch (error) {
         console.error('获取GitHub信息失败:', error);
@@ -1569,13 +1572,64 @@ GROQ_MODEL=llama-3.2-90b-text-preview
 }
 
 /**
- * 分析代码架构
+ * 保存源码链接
  */
-async function analyzeCodeArchitecture(forceRefresh = false) {
+async function saveSourceCodeUrl() {
     const sourceCodeUrl = document.getElementById('sourceCodeUrl').value.trim();
 
     if (!sourceCodeUrl) {
-        showToast('请先输入源码链接', 'error');
+        showToast('请输入源码链接', 'error');
+        return;
+    }
+
+    showSpinner('saveCodeUrlSpinner', 'saveCodeUrlBtnText', '保存中...');
+
+    try {
+        const response = await fetch(`/api/papers/${currentPaperId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                github_url: sourceCodeUrl
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('保存失败');
+        }
+
+        hideSpinner('saveCodeUrlSpinner', 'saveCodeUrlBtnText', '保存链接');
+        showToast('✓ 源码链接已保存', 'success');
+
+        // 如果是GitHub链接，获取仓库信息
+        if (sourceCodeUrl.includes('github.com')) {
+            fetchGitHubRepoInfo(sourceCodeUrl);
+        }
+
+        // 更新当前论文对象
+        if (currentPaper) {
+            currentPaper.github_url = sourceCodeUrl;
+        }
+    } catch (error) {
+        hideSpinner('saveCodeUrlSpinner', 'saveCodeUrlBtnText', '保存链接');
+        showToast('保存失败: ' + error.message, 'error');
+    }
+}
+
+/**
+ * 分析代码架构
+ */
+async function analyzeCodeArchitecture(forceRefresh = false) {
+    const sourceCodeUrlElem = document.getElementById('sourceCodeUrl');
+
+    if (!sourceCodeUrlElem) {
+        showToast('页面元素未加载完成', 'error');
+        return;
+    }
+
+    const sourceCodeUrl = sourceCodeUrlElem.value.trim();
+
+    if (!sourceCodeUrl) {
+        showToast('请先输入并保存源码链接', 'error');
         return;
     }
 

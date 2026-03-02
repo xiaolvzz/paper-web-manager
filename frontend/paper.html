@@ -267,6 +267,26 @@
 
             <!-- Tab 2: 源码信息 -->
             <div class="tab-pane fade" id="codeTab" role="tabpanel">
+                <!-- GitHub链接管理 -->
+                <div class="detail-section">
+                    <h4 class="mb-3">🔗 代码仓库</h4>
+                    <div class="row g-3">
+                        <div class="col-md-9">
+                            <label for="sourceCodeUrl" class="form-label">GitHub/代码链接</label>
+                            <input type="url" class="form-control" id="sourceCodeUrl" placeholder="https://github.com/username/repo">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button class="btn btn-primary w-100" onclick="saveSourceCodeUrl()">
+                                <span id="saveCodeUrlBtnText">保存链接</span>
+                                <span id="saveCodeUrlSpinner" class="spinner-border spinner-border-sm d-none"></span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="githubRepoInfo" class="mt-3" style="display: none;">
+                        <!-- GitHub仓库信息将显示在这里 -->
+                    </div>
+                </div>
+
                 <div class="detail-section">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="mb-0">💻 源码阅读笔记</h4>
