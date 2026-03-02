@@ -456,11 +456,20 @@
                             <textarea class="form-control" id="noteContent" rows="8" placeholder="记录你的理解、想法、疑问等..."></textarea>
                         </div>
 
-                        <!-- 上传截图 -->
+                        <!-- 截图区域 -->
                         <div class="mb-3">
                             <label class="form-label">截图</label>
-                            <input type="file" class="form-control mb-2" id="noteImageInput" accept="image/*" multiple>
-                            <small class="text-muted">可以上传多张截图，支持JPG、PNG、GIF、WebP格式，单张不超过5MB</small>
+                            <div class="paste-area" id="notePasteArea">
+                                <div class="paste-area-hint">
+                                    <i class="bi bi-image"></i>
+                                    <p>📋 <strong>直接粘贴截图</strong> (Ctrl+V / Cmd+V)</p>
+                                    <p class="small text-muted">或者点击下方按钮选择文件</p>
+                                </div>
+                                <input type="file" class="form-control mt-2" id="noteImageInput" accept="image/*" multiple>
+                            </div>
+                            <small class="text-muted d-block mt-2">
+                                💡 提示：按 <kbd>Ctrl+V</kbd> (Windows) 或 <kbd>Cmd+V</kbd> (Mac) 直接粘贴截图
+                            </small>
 
                             <!-- 已上传的图片预览 -->
                             <div id="noteImagesPreview" class="mt-3">

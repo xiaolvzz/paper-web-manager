@@ -765,3 +765,80 @@ body {
     align-items: center;
     gap: 4px;
 }
+
+/* ========== 粘贴截图区域 ========== */
+.paste-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 20px;
+    background: #f8fafc;
+    transition: all 0.3s ease;
+}
+
+.paste-area:hover {
+    border-color: #94a3b8;
+    background: #f1f5f9;
+}
+
+.paste-area.drag-over {
+    border-color: #3b82f6;
+    background: #eff6ff;
+    border-style: solid;
+}
+
+.paste-area.pasting {
+    border-color: #10b981;
+    background: #f0fdf4;
+    border-style: solid;
+}
+
+.paste-area-hint {
+    text-align: center;
+    color: #64748b;
+    padding: 10px;
+}
+
+.paste-area-hint i {
+    font-size: 2rem;
+    color: #94a3b8;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.paste-area-hint p {
+    margin: 5px 0;
+}
+
+.paste-area-hint .small {
+    font-size: 0.85rem;
+}
+
+kbd {
+    background-color: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-family: monospace;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+/* 粘贴成功反馈 */
+@keyframes paste-success {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.paste-area.paste-success {
+    animation: paste-success 0.5s ease;
+}

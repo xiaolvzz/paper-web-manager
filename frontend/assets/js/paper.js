@@ -1822,6 +1822,9 @@ function addNewNote(noteType) {
 
     const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
     modal.show();
+
+    // 初始化粘贴功能
+    initializePasteListener();
 }
 
 /**
@@ -1848,6 +1851,9 @@ function editNote(noteId, noteType) {
 
     const modal = new bootstrap.Modal(document.getElementById('noteEditorModal'));
     modal.show();
+
+    // 初始化粘贴功能
+    initializePasteListener();
 }
 
 /**
@@ -1862,25 +1868,6 @@ async function saveNote() {
     if (!title) {
         showToast('请输入标题', 'error');
         return;
-    }
-
-    // 处理文件上传
-    const fileInput = document.getElementById('noteImageInput');
-    if (fileInput.files.length > 0) {
-        showSpinner('saveNoteSpinner', 'saveNoteBtnText', '上传图片中...');
-
-        for (let i = 0; i < fileInput.files.length; i++) {
-            const file = fileInput.files[i];
-            try {
-                const uploadedUrl = await uploadNoteImage(file);
-                tempImageUrls.push(uploadedUrl);
-            } catch (error) {
-                console.error('上传图片失败:', error);
-                showToast(`图片上传失败: ${error.message}`, 'error');
-                hideSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存');
-                return;
-            }
-        }
     }
 
     showSpinner('saveNoteSpinner', 'saveNoteBtnText', '保存中...');
@@ -2039,9 +2026,141 @@ function initializeNotes() {
     // 监听图片选择事件
     const imageInput = document.getElementById('noteImageInput');
     if (imageInput) {
-        imageInput.addEventListener('change', () => {
-            renderImagePreview();
+        imageInput.addEventListener('change', async () => {
+            // 处理文件选择
+            const files = imageInput.files;
+            if (files.length > 0) {
+                await handleImageFiles(files);
+                // 清空input以便可以重复选择同一文件
+                imageInput.value = '';
+            }
         });
+    }
+}
+
+/**
+ * 初始化粘贴监听器
+ */
+function initializePasteListener() {
+    const modal = document.getElementById('noteEditorModal');
+    const pasteArea = document.getElementById('notePasteArea');
+
+    if (!modal || !pasteArea) return;
+
+    // 移除旧的监听器（如果存在）
+    modal.removeEventListener('paste', handlePaste);
+
+    // 添加粘贴监听器到整个modal
+    modal.addEventListener('paste', handlePaste);
+
+    // 添加拖拽监听器
+    pasteArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        pasteArea.classList.add('drag-over');
+    });
+
+    pasteArea.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        pasteArea.classList.remove('drag-over');
+    });
+
+    pasteArea.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        pasteArea.classList.remove('drag-over');
+
+        const files = Array.from(e.dataTransfer.files).filter(file =>
+            file.type.startsWith('image/')
+        );
+
+        if (files.length > 0) {
+            pasteArea.classList.add('pasting');
+            await handleImageFiles(files);
+            pasteArea.classList.remove('pasting');
+            pasteArea.classList.add('paste-success');
+            setTimeout(() => pasteArea.classList.remove('paste-success'), 500);
+        }
+    });
+}
+
+/**
+ * 处理粘贴事件
+ */
+async function handlePaste(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const pasteArea = document.getElementById('notePasteArea');
+    const imageFiles = [];
+
+    // 提取粘贴的图片
+    for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.indexOf('image') !== -1) {
+            e.preventDefault(); // 阻止默认粘贴行为
+            const file = item.getAsFile();
+            if (file) {
+                imageFiles.push(file);
+            }
+        }
+    }
+
+    // 如果有图片，上传并显示
+    if (imageFiles.length > 0) {
+        if (pasteArea) {
+            pasteArea.classList.add('pasting');
+        }
+
+        await handleImageFiles(imageFiles);
+
+        if (pasteArea) {
+            pasteArea.classList.remove('pasting');
+            pasteArea.classList.add('paste-success');
+            setTimeout(() => pasteArea.classList.remove('paste-success'), 500);
+        }
+
+        showToast(`✓ 已粘贴 ${imageFiles.length} 张图片`, 'success');
+    }
+}
+
+/**
+ * 处理图片文件（统一处理上传和文件选择）
+ */
+async function handleImageFiles(files) {
+    const uploadPromises = [];
+
+    for (let file of files) {
+        // 验证文件类型
+        if (!file.type.startsWith('image/')) {
+            showToast(`文件 ${file.name} 不是图片格式`, 'error');
+            continue;
+        }
+
+        // 验证文件大小（5MB）
+        if (file.size > 5 * 1024 * 1024) {
+            showToast(`图片 ${file.name} 超过5MB`, 'error');
+            continue;
+        }
+
+        // 上传图片
+        uploadPromises.push(uploadNoteImage(file));
+    }
+
+    // 等待所有图片上传完成
+    try {
+        const uploadedUrls = await Promise.all(uploadPromises);
+
+        // 添加到临时图片列表
+        uploadedUrls.forEach(url => {
+            if (url) {
+                tempImageUrls.push(url);
+            }
+        });
+
+        // 更新预览
+        renderImagePreview();
+    } catch (error) {
+        console.error('上传图片失败:', error);
+        showToast('部分图片上传失败', 'error');
     }
 }
 
