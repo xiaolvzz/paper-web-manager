@@ -1794,7 +1794,7 @@ let currentEditingNote = null;
  */
 async function loadNotes(noteType) {
     try {
-        const response = await fetch(`/api/code-notes/paper/${paperId}?note_type=${noteType}`);
+        const response = await fetch(`/api/code-notes/paper/${currentPaperId}?note_type=${noteType}`);
         if (!response.ok) {
             throw new Error('加载笔记失败');
         }
