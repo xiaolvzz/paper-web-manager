@@ -2447,7 +2447,16 @@ async function addPaperTag(domainId) {
             })
         });
 
-        if (!response.ok) throw new Error('添加标签失败');
+        if (!response.ok) {
+            let errorMessage = '添加标签失败';
+            try {
+                const errorData = await response.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            }
+            throw new Error(errorMessage);
+        }
 
         showToast('✓ 标签已添加', 'success');
 
@@ -2510,8 +2519,14 @@ async function createAndAddTag() {
         });
 
         if (!createResponse.ok) {
-            const error = await createResponse.json();
-            throw new Error(error.detail || '创建标签失败');
+            let errorMessage = '创建标签失败';
+            try {
+                const errorData = await createResponse.json();
+                errorMessage = errorData.detail || errorMessage;
+            } catch (e) {
+                errorMessage = `HTTP ${createResponse.status}: ${createResponse.statusText}`;
+            }
+            throw new Error(errorMessage);
         }
 
         const newTag = await createResponse.json();

@@ -127,21 +127,31 @@ async def remove_domain_from_paper(
         raise HTTPException(status_code=500, detail=f"移除标签失败: {str(e)}")
 
 
+class CreateDomainRequest(BaseModel):
+    """创建标签请求"""
+    name: str
+    color: str = "#6366f1"
+    icon: str = "🏷️"
+    description: Optional[str] = None
+
+
 @router.post("/domains/create")
 async def create_custom_domain(
-    name: str,
-    color: str = "#6366f1",
-    icon: str = "🏷️",
-    description: Optional[str] = None,
+    request: CreateDomainRequest,
     db: Client = Depends(get_db)
 ) -> DomainResponse:
     """创建自定义领域标签"""
     try:
+        # 检查标签名是否已存在
+        existing = db.table("domains").select("id").eq("name", request.name).execute()
+        if existing.data:
+            raise HTTPException(status_code=400, detail="标签名已存在")
+
         response = db.table("domains").insert({
-            "name": name,
-            "color": color,
-            "icon": icon,
-            "description": description,
+            "name": request.name,
+            "color": request.color,
+            "icon": request.icon,
+            "description": request.description,
             "is_predefined": False
         }).execute()
 
@@ -158,5 +168,7 @@ async def create_custom_domain(
             is_predefined=False
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建标签失败: {str(e)}")
