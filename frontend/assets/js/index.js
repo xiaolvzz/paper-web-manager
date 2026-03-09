@@ -6,7 +6,17 @@ let currentPapers = [];
 
 // 页面加载时获取论文列表
 document.addEventListener('DOMContentLoaded', () => {
-    loadPapers();
+    // 显示加载动画
+    if (typeof showGlobalLoader === 'function') {
+        showGlobalLoader('加载论文列表...');
+    }
+
+    loadPapers().finally(() => {
+        // 隐藏加载动画
+        if (typeof hideGlobalLoader === 'function') {
+            setTimeout(hideGlobalLoader, 200);
+        }
+    });
 
     // 搜索框回车事件
     document.getElementById('searchInput').addEventListener('keypress', (e) => {

@@ -17,9 +17,29 @@ let selectedNodeTitle = '';
 
 // 页面加载时初始化
 document.addEventListener('DOMContentLoaded', async () => {
-    await loadAllDomains();
-    await loadGraph();
-    initContextMenu();
+    // 显示加载动画
+    if (typeof showGlobalLoader === 'function') {
+        showGlobalLoader('加载关系图...');
+    }
+
+    try {
+        // 并行加载数据
+        await Promise.all([
+            loadAllDomains(),
+            loadGraph()
+        ]);
+
+        // 初始化上下文菜单
+        initContextMenu();
+    } catch (error) {
+        console.error('关系图加载失败:', error);
+        showToast('加载失败: ' + error.message, 'error');
+    } finally {
+        // 隐藏加载动画
+        if (typeof hideGlobalLoader === 'function') {
+            setTimeout(hideGlobalLoader, 300);
+        }
+    }
 });
 
 // 加载关系图数据

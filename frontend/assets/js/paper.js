@@ -92,23 +92,41 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
+    // 显示加载动画
+    if (typeof showGlobalLoader === 'function') {
+        showGlobalLoader('加载论文详情...');
+    }
+
     // 保存paper ID
     currentPaperId = paperId;
 
-    // 加载论文详情和关系
-    await loadPaperDetails(paperId);
-    await loadAllPapers(); // 为关联关系下拉列表加载所有论文
+    try {
+        // 关键数据并行加载（必须等待完成）
+        await Promise.all([
+            loadPaperDetails(paperId),
+            loadAllPapers(),
+            loadPaperTags()
+        ]);
 
-    // 加载对话历史
-    await loadConversations();
-    // 检查AI配置状态
-    checkAIStatus();
-    // 检查论文内容状态
-    checkContentStatus();
-    // 初始化笔记功能
-    initializeNotes();
-    // 加载论文标签
-    await loadPaperTags();
+        // 非关键数据异步加载（不阻塞页面显示）
+        Promise.all([
+            loadConversations(),
+            checkAIStatus(),
+            checkContentStatus()
+        ]).catch(err => console.warn('非关键数据加载失败:', err));
+
+        // 初始化笔记功能（轻量级操作）
+        initializeNotes();
+
+    } catch (error) {
+        console.error('页面加载失败:', error);
+        showToast('加载失败: ' + error.message, 'error');
+    } finally {
+        // 隐藏加载动画
+        if (typeof hideGlobalLoader === 'function') {
+            setTimeout(hideGlobalLoader, 300); // 延迟一点隐藏，避免闪烁
+        }
+    }
 });
 
 // 加载论文详情
